@@ -1,0 +1,40 @@
+# ===== Secrets — never commit =====
+.env
+.env.*
+*.local.json
+*.local.*
+*credentials*.json
+*credential*.json
+secrets/
+*.pem
+*.key
+
+# ===== Personal / real data =====
+data/real/
+exports/
+*.csv.bak
+
+# ===== Python / notebooks (for any helper scripts) =====
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ===== Node (if you add any scripts) =====
+node_modules/
+
+# ===== Logs & temp =====
+*.log
+tmp/
+*.tmp
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Editors =====
+.vscode/
+.idea/
+*.swp
