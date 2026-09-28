@@ -241,7 +241,7 @@ Every system runs standalone. These links are optional and are only built if bot
 
 | Layer | Technology |
 |---|---|
-| Automation engine | n8n (self-hosted via Docker, or n8n Cloud) |
+| Automation engine | n8n Cloud — one shared instance, one project per member |
 | Data store | Google Sheets (master data + per-system tables); Postgres optional for IT Ops and Security |
 | AI | LLM via the AI gateway sub-workflow; vision LLM for invoice and receipt extraction |
 | Messaging | Gmail / SMTP, Telegram bot, Slack (IT Ops alerts) |
@@ -272,9 +272,6 @@ CompanyFlow/
 │   ├── data-contracts.md    # every shared sheet: columns, types, owner
 │   ├── setup-guide.md
 │   └── screenshots/
-├── docker/
-│   ├── docker-compose.yml
-│   └── .env.example
 └── README.md
 ```
 
@@ -284,59 +281,79 @@ CompanyFlow/
 
 ### Prerequisites
 
-- n8n — self-hosted with Docker, or an n8n Cloud workspace
+- An **n8n Cloud** account, and membership of the team's shared workspace (see below)
 - A Google account with Sheets, Drive, Gmail and Calendar access
 - A Telegram bot token ([@BotFather](https://t.me/BotFather))
 - An LLM API key (text + vision)
 
-### 1. Clone
+### How the workspace is organised
+
+All six members work inside **one shared n8n Cloud instance**, each owning their own credentials and their own workflows:
+
+| Space | Contents | Who can see it |
+|---|---|---|
+| `CompanyFlow — Shared` project | The `shared/` sub-workflows and the master-data credential | All six members |
+| One project per department | That department's two systems and its own credentials | Its owner (+ leader) |
+
+The team leader is the instance owner, invites the other five members, and creates the projects. Everyone builds in their own project; nobody edits another department's workflows.
+
+Two limits worth knowing before you set this up:
+
+- **Sharing and projects are Pro-plan features.** Workflow sharing between users of the same instance is available on Pro and Enterprise Cloud plans. On a Starter plan there is no multi-user sharing, so the team would be working in six separate instances instead of one.
+- **Six separate accounts are six separate instances.** *Execute Workflow* only calls sub-workflows inside the same instance, so the shared AI-gateway and notification sub-workflows only work if everyone is a member of **one** workspace. If the team ends up on separate instances, each system has to call the shared logic over a webhook instead, and every member needs their own copy of it.
+
+### 1. Clone the repo
 
 ```bash
 git clone https://github.com/<org-or-user>/CompanyFlow.git
 cd CompanyFlow
 ```
 
-### 2. Run n8n
+The repo holds the workflow JSON, the sheet templates and the prompts. The workflows themselves run in n8n Cloud — nothing here needs to be installed or served.
 
-```bash
-cd docker
-cp .env.example .env     # fill in the values, then:
-docker compose up -d
-```
+### 2. Set the workspace timezone
 
-n8n starts at `http://localhost:5678`. Generate a strong encryption key before first launch — if you lose it, every stored credential becomes unreadable:
-
-```bash
-openssl rand -hex 32
-```
-
-Set `GENERIC_TIMEZONE=Africa/Cairo` so Schedule triggers fire at local time.
+In n8n Cloud, open *Settings → Workflow settings* and set the default timezone to **Africa/Cairo**, so Schedule triggers fire at local time. Setting it once at workspace level saves overriding it per workflow.
 
 ### 3. Create the Google Sheets
 
-Copy the templates in `data/sheet-templates/` into your own Drive, keeping the column headers exactly as they are — workflows reference columns by name. Put each sheet's ID into the n8n variables listed in `docs/setup-guide.md`.
+Copy the templates in `data/sheet-templates/` into Drive, keeping the column headers exactly as they are — workflows reference columns by name.
 
-### 4. Create credentials
+Then record each sheet's ID where the workflows can read it:
 
-Workflows reference credentials **by name**, so create these with exactly these names under *Settings → Credentials*:
+- **Pro plan and above:** n8n Variables (*Settings → Variables*), using the names listed in `docs/setup-guide.md`.
+- **Starter plan:** Variables are not available, so use the `shared-config` sub-workflow, which returns all sheet IDs from a single Set node. Call it instead of pasting IDs into individual nodes — one place to change when a sheet is replaced.
 
-| Credential name | Type |
-|---|---|
-| `CF Google Sheets` | Google Sheets OAuth2 |
-| `CF Gmail` | Gmail OAuth2 |
-| `CF Google Drive` | Google Drive OAuth2 |
-| `CF Google Calendar` | Google Calendar OAuth2 |
-| `CF Telegram` | Telegram |
-| `CF LLM` | HTTP Header Auth |
-| `CF Threat Intel` | HTTP Header Auth (VirusTotal / AbuseIPDB) |
+### 4. Create your own credentials
+
+Each member creates their **own** credentials in their own project — your Google account, your Telegram bot, your API keys. Nobody shares secret values.
+
+Name them `CF <Service> — <Dept>` so they stay distinguishable in the shared instance:
+
+| Credential name | Type | Needed by |
+|---|---|---|
+| `CF Google Sheets — <Dept>` | Google Sheets OAuth2 | all |
+| `CF Gmail — <Dept>` | Gmail OAuth2 | HR, Finance, IT Ops, Sales, Marketing |
+| `CF Google Drive — <Dept>` | Google Drive OAuth2 | HR, Finance |
+| `CF Google Calendar — <Dept>` | Google Calendar OAuth2 | HR, IT Ops |
+| `CF Telegram — <Dept>` | Telegram | all |
+| `CF LLM — <Dept>` | HTTP Header Auth | all |
+| `CF Threat Intel — Security` | HTTP Header Auth | Security |
+
+Two exceptions, both owned by the leader and shared into the `CompanyFlow — Shared` project:
+
+- the credential that writes to the **master data** sheets, so employee and vendor IDs have one writer;
+- the credential used by the shared **AI gateway**, so token usage is visible in one place.
+
+When you import a workflow someone else exported, the credential references won't resolve — open each red-flagged node and pick your own credential. This is expected, not a broken export.
+
+> Sharing a *workflow* also lets the editor use every credential inside it, even ones never explicitly shared. Keep personal API keys in your own project rather than the shared one.
 
 ### 5. Import the workflows
 
-```bash
-docker compose exec n8n n8n import:workflow --separate --input=/data/workflows
-```
+n8n Cloud has no CLI, so import through the editor: **Workflows → Add workflow → ⋮ menu → Import from File**, then pick the JSON from the matching folder under `workflows/`.
 
-Activate the `shared/` workflows first, then your department's.
+Import and activate the `shared/` workflows first — every department workflow calls them, and an *Execute Workflow* node pointing at a missing sub-workflow fails silently at runtime.
 
 ---
 
@@ -349,13 +366,9 @@ These rules are what keep six people's work mergeable:
 - **Sub-workflows** — shared logic lives in `workflows/shared/` and is called with *Execute Workflow*. No system duplicates AI or notification logic.
 - **Idempotency** — check for an existing record before creating one. Triggers fire twice more often than you expect.
 - **IDs** — never invent your own employee or vendor identifiers; take them from master data.
-- **Secrets** — no API keys, tokens, real emails or personal data inside nodes. Credentials and n8n variables only.
-- **Export before you commit** — the JSON in `workflows/` is the source of truth, not what is sitting in your local n8n.
-
-```bash
-# export everything after making changes
-docker compose exec n8n n8n export:workflow --all --separate --output=/data/workflows
-```
+- **Secrets** — no API keys, tokens, real emails or personal data inside nodes. Credentials and variables only.
+- **Export before you commit** — the JSON in `workflows/` is the source of truth, not what is sitting in the Cloud workspace. Export with **⋮ → Download** in the workflow editor, then save the file into your department folder under its `<system>-<action>.json` name.
+- **One instance, six members** — you each own your own project, credentials and workflows, but you share one live instance. Build only inside your own project. Deactivate a workflow before a big rebuild so half-finished logic doesn't fire on a schedule, and never rename, move or delete anything in the shared project without telling the team — moving a workflow or credential between projects silently drops its existing sharing.
 
 ---
 
@@ -393,7 +406,7 @@ Scripted end-to-end runs for the project defense:
 4. Update `docs/data-contracts.md` if you added or changed a shared column.
 5. Open a pull request describing the behaviour, the sheets it reads and the sheets it writes.
 
-**Do not commit:** `.env` files, credential exports, real customer or employee data, personal phone numbers, emails or student IDs.
+**Do not commit:** API keys or tokens, real customer or employee data, personal phone numbers, emails or student IDs. Exported workflow JSON contains credential *names* only, not their values — but check any Set or Code node you added before pushing.
 
 ---
 
