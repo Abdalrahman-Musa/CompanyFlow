@@ -1,0 +1,20 @@
+ZIAD N. — Junior Machine Learning Engineer
+Mansoura, Egypt | ziad.n.demo@example.com
+
+EXPERIENCE
+Junior ML Engineer — VisionTech AI (startup), Cairo | Aug 2025 – Present (1 year 2 months)
+- Trained and deployed computer-vision models with TensorFlow and PyTorch; built REST inference APIs with FastAPI.
+- Prepared training datasets with Python (pandas, NumPy) and labelled images.
+- Wrote SQL queries to pull model monitoring data from MySQL.
+
+EDUCATION
+B.Sc. Computer Science — 2025
+
+CERTIFICATIONS
+DeepLearning.AI Machine Learning Specialization
+
+SKILLS
+Python, pandas, NumPy, scikit-learn, TensorFlow, PyTorch, SQL, Git, Docker, regression and classification models.
+
+LANGUAGES
+Arabic (native), English (professional)

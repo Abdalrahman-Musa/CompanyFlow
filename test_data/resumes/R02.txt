@@ -1,0 +1,28 @@
+KARIM M. — Senior SOC Analyst / Incident Responder
+Giza, Egypt | karim.m.demo@example.com | +20 111 000 0002
+
+SUMMARY
+Incident responder with almost 5 years in security operations at a bank and a telecom operator. Leads containment, threat hunting and detection engineering.
+
+EXPERIENCE
+Senior SOC Analyst (Tier 2) — Pyramid Bank Security Operations, Cairo | Mar 2023 – Present
+- Lead incident response for escalated cases: scoping, containment and eradication using CrowdStrike Falcon EDR.
+- Run weekly threat hunting sessions based on MITRE ATT&CK hypotheses; uncovered 3 undetected persistence mechanisms.
+- Write and tune correlation rules in Microsoft Sentinel (KQL) and Sigma; reduced false positives by 35%.
+- Malware triage of suspicious binaries in a sandbox; extract IOCs and write YARA rules.
+- Build forensic timelines from EDR telemetry and Windows logs to establish root cause; mentor 4 Tier 1 analysts.
+
+SOC Analyst (Tier 1) — Delta Telecom, Giza | Jan 2022 – Feb 2023
+- Monitored QRadar SIEM, triaged alerts and escalated incidents through ServiceNow tickets.
+
+EDUCATION
+B.Sc. Computer Engineering — 2021
+
+CERTIFICATIONS
+GIAC GCIH (2024), CompTIA CySA+ (2022), BTL1 (2022)
+
+SKILLS
+Incident response, threat hunting, KQL, SPL, Sigma, YARA, CrowdStrike, Defender for Endpoint, memory forensics (Volatility), SOAR playbooks (Shuffle), Azure activity logs.
+
+LANGUAGES
+Arabic (native), English (fluent)

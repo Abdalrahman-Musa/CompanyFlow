@@ -1,0 +1,22 @@
+TAREK F. — NOC Engineer
+Cairo, Egypt | tarek.f.demo@example.com | 01200000004
+Military Status: Completed
+
+EXPERIENCE
+NOC Engineer — FiberLink ISP, Cairo | Mar 2025 – Present (1 year 7 months)
+- 24/7 Network Operations Center shifts monitoring routers, switches and firewalls with Zabbix and SolarWinds.
+- Troubleshoot routing (OSPF, BGP), VLAN and DNS issues; follow escalation procedures with vendors.
+- Open and track incident tickets in ServiceNow; write shift hand-over reports.
+- Reviewed firewall logs and basic SIEM dashboards (QRadar) shared by the security team during joint incidents.
+
+EDUCATION
+B.Sc. Communications & Electronics Engineering — 2024
+
+CERTIFICATIONS
+Cisco CCNA (2024)
+
+SKILLS
+TCP/IP, subnetting, OSPF, BGP, VLANs, firewalls, Zabbix, SolarWinds, ServiceNow, Linux CLI, basic Python.
+
+LANGUAGES
+Arabic (native), English (professional)

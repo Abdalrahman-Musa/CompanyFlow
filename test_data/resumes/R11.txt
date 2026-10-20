@@ -1,0 +1,17 @@
+AMR T. — Backend Developer
+Cairo, Egypt | amr.t.demo@example.com | +20 128 000 0011
+
+EXPERIENCE
+Backend Developer — PayFlow Fintech, Cairo | Oct 2023 – Present (3 years)
+- Build REST APIs in Node.js (Express, NestJS) and TypeScript for payment services.
+- Design PostgreSQL schemas, write complex SQL queries and optimise indexes.
+- Containerise services with Docker and deploy to Linux servers via GitHub Actions; write unit tests with Jest.
+
+EDUCATION
+B.Sc. Computer Science — 2023
+
+SKILLS
+Node.js, TypeScript, Express, NestJS, PostgreSQL, SQL, Redis, Docker, Linux, Git, Jest, Python scripts.
+
+LANGUAGES
+Arabic (native), English (professional)

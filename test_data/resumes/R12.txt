@@ -1,0 +1,23 @@
+HASSAN G. — Senior Accountant
+Tanta, Egypt | hassan.g.demo@example.com | 01000000012
+
+EXPERIENCE
+Senior Accountant — Delta Trading Co., Cairo | Jan 2021 – Present (5 years 9 months)
+- Prepare monthly financial statements and reconciliations; build Excel models with pivot tables and VLOOKUP.
+- Built 2 Power BI reports for monthly expenses using basic visuals.
+- Pull ledger data with simple SQL queries from the ERP database.
+
+Accountant — Al-Amal Factory | Jan 2019 – Dec 2020 (2 years)
+- Recorded journal entries and prepared VAT returns.
+
+EDUCATION
+B.Com. Accounting — 2018
+
+CERTIFICATIONS
+CMA Part 1 (in progress)
+
+SKILLS
+Excel (advanced), pivot tables, VLOOKUP, financial reporting, Power BI basics, SQL basics, Oracle ERP.
+
+LANGUAGES
+Arabic (native), English (good)

@@ -1,0 +1,25 @@
+AYA S. — Technical Support Specialist
+Giza, Egypt | aya.s.demo@example.com | +20 106 000 0009
+
+EXPERIENCE
+Technical Support Specialist (L1) — GlobalServe Outsourcing (UK client account), Cairo | Feb 2024 – Present (2 years 8 months)
+- Troubleshoot Windows 11 and macOS laptops, Microsoft 365 / Outlook, Teams and OneDrive issues for 2,000 client users.
+- Manage user accounts, password resets and group membership in Active Directory and Entra ID.
+- Resolve VPN, Wi-Fi, DNS and DHCP connectivity problems; remote support via TeamViewer and RDP.
+- Work tickets in ServiceNow within SLA (95% SLA compliance); escalate to L2 with clear notes.
+- Wrote 25 knowledge base articles; automated user onboarding steps with PowerShell scripts.
+
+Customer Support Agent — Delta Retail Call Center | Jul 2023 – Jan 2024 (7 months)
+- Answered customer calls about orders and deliveries.
+
+EDUCATION
+B.Sc. Computer Engineering — 2023
+
+CERTIFICATIONS
+CompTIA A+ (2024), ITIL 4 Foundation (2025)
+
+SKILLS
+Windows/macOS troubleshooting, Active Directory, Entra ID, Microsoft 365 administration, Intune basics, TCP/IP, DNS, DHCP, VPN, ServiceNow, Jira Service Management, PowerShell, remote support.
+
+LANGUAGES
+Arabic (native), English (fluent, C1)

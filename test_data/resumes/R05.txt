@@ -1,0 +1,23 @@
+HABIBA K. — Junior Data Analyst
+Cairo, Egypt | habiba.k.demo@example.com | +20 101 000 0005 | github.com/habiba-demo
+
+EXPERIENCE
+Data Analyst Intern — Masr Retail Group, Cairo | Jul 2025 – Jun 2026 (12 months)
+- Wrote SQL queries (joins, window functions) on PostgreSQL to analyse weekly sales across 40 branches.
+- Cleaned and validated messy POS exports in Excel (pivot tables, XLOOKUP) and Python pandas.
+- Built and maintained 6 Power BI dashboards for sales and HR managers; wrote basic DAX measures.
+- Ran descriptive statistics and an A/B test readout for a promotion campaign; presented findings to regional managers.
+
+Portfolio: 4 public data projects (SQL + Power BI).
+
+EDUCATION
+B.Com. Business Information Systems, Faculty of Commerce — 2025
+
+CERTIFICATIONS
+Google Data Analytics Professional Certificate (2025)
+
+SKILLS
+SQL, PostgreSQL, Excel, Power BI, DAX, Python (pandas), statistics, data cleaning, data storytelling, Google Analytics basics.
+
+LANGUAGES
+Arabic (native), English (professional)

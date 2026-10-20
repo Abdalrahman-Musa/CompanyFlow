@@ -1,0 +1,25 @@
+OMAR S. — BI Developer
+Cairo, Egypt | omar.s.demo@example.com | +20 122 000 0006
+Date of Birth: 05/11/1999
+Religion: Muslim
+Marital Status: Single
+
+EXPERIENCE
+BI Developer — Nile Insurance, Cairo | Jan 2023 – Present (3 years 9 months)
+- Designed star-schema data models (fact and dimension tables, slowly changing dimensions) for claims and policy data.
+- Built and scheduled ETL pipelines with SSIS and Azure Data Factory into a SQL Server data warehouse.
+- Developed enterprise Power BI semantic models with complex DAX measures and row-level security.
+- Tuned slow reports with query optimization, aggregations and incremental refresh: cut refresh time from 50 to 12 minutes.
+- Documented data lineage and KPI definitions.
+
+EDUCATION
+B.Sc. Information Systems — 2022
+
+CERTIFICATIONS
+Microsoft PL-300 (2023), Microsoft DP-203 (2024)
+
+SKILLS
+Power BI, DAX, T-SQL, stored procedures, star schema, Kimball, SSIS, Azure Data Factory, Synapse, Python, Excel, performance tuning.
+
+LANGUAGES
+Arabic (native), English (fluent)

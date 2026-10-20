@@ -1,0 +1,33 @@
+SAMEH A. — Junior SOC Analyst
+Cairo, Egypt | sameh.a.demo@example.com | +20 100 000 0101
+Date of Birth: 02/07/1997
+Gender: Male
+Marital Status: Married
+Military Status: Completed
+Nationality: Egyptian
+
+PROFILE
+Cybersecurity graduate focused on blue-team operations. Built a home SOC lab and completed a 6-month SOC internship at a managed security services provider.
+
+EXPERIENCE
+SOC Analyst Intern — Nile MSSP (Managed Security Services), Cairo | Jan 2026 – Jun 2026 (6 months)
+- Monitored Splunk SIEM alert queues on rotating shifts; triaged 40+ alerts per shift and closed false positives with notes.
+- Opened and updated incident tickets in TheHive and escalated confirmed incidents to Tier 2.
+- Analysed Windows event logs (Event ID 4625, 4688) and Sysmon data to spot brute force and suspicious process creation.
+- Investigated reported phishing emails: email header analysis and URL sandboxing.
+
+Home SOC Lab | 2025 – Present
+- Deployed Wazuh and Splunk Free; forwarded Windows and Linux logs; wrote detection searches mapped to MITRE ATT&CK.
+
+EDUCATION
+B.Sc. Computer Science (Information Security track), Delta Institute of Technology, Cairo — 2025
+
+CERTIFICATIONS
+CompTIA Security+ (2025)
+TryHackMe SOC Level 1 learning path (completed)
+
+SKILLS
+SIEM (Splunk, Wazuh), alert triage, incident ticketing, TCP/IP, DNS, HTTP, Windows event logs, Sysmon, phishing analysis, Python scripting, Linux command line.
+
+LANGUAGES
+Arabic (native), English (professional working proficiency, IELTS 7.0)
