@@ -1,0 +1,203 @@
+{
+  "name": "CF-00 System – Error Handler & Data Retention",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CF-00 · System — Error Handler & Data Retention\n**Error branch:** every CompanyFlow workflow points its *Settings → Error workflow* here. A failure is summarised **without input data** (no résumés, passwords or tokens), written to the tamper-evident `audit_log`, and e-mailed to the team.\n\n**Retention branch:** every Sunday 03:00 Cairo: delete chat memory older than 90 days and anonymise candidates whose applications closed more than 12 months ago (data minimisation, Egypt PDPL 151/2020).\n\nSetup: Postgres credential · Gmail credential (or disable the e-mail node) · change the alert address.",
+        "height": 300,
+        "width": 760,
+        "color": 7
+      },
+      "id": "baafe102-7a55-4644-81fc-200351754c6e",
+      "name": "Sticky Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -380
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "655746d2-c78a-457d-acfb-341a56b6a601",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-00 · \"Summarize Error (no PII)\" — only metadata is kept; node input data (résumés,\n// passwords, tokens) is never copied into the audit log or the alert e-mail.\nconst e = $input.first().json;\nconst exec = e.execution || {};\nconst wf = e.workflow || {};\nconst err = exec.error || (e.trigger && e.trigger.error) || {};\nconst scrub = s => String(s || '')\n  .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, '[EMAIL]')\n  .replace(/eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+/g, '[JWT]')\n  .replace(/(password|secret|api[_-]?key|token)[\"'\\s:=]+[^\\s\"',}]+/gi, '$1=[REDACTED]')\n  .slice(0, 600);\nconst name = wf.name || 'unknown workflow';\nreturn [{ json: {\n  workflow_id: wf.id || null,\n  workflow_name: name,\n  execution_id: exec.id ? String(exec.id) : null,\n  execution_url: exec.url || null,\n  failed_node: exec.lastNodeExecuted || (err.node && err.node.name) || null,\n  error_message: scrub(err.message || err.description || 'Unknown error'),\n  mode: exec.mode || null,\n  at: new Date().toISOString(),\n  severity: /CF-0[1357]/.test(name) ? 'HIGH' : 'MEDIUM',\n} }];\n"
+      },
+      "id": "de3de22b-1303-48d3-bd68-b299b5477e6f",
+      "name": "Summarize Error (no PII)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_log($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ action: 'workflow_error', outcome: 'error', actor_role: 'system', entity_type: 'workflow', entity_id: $json.workflow_name, details: $json, workflow: $json.workflow_name, execution_id: $json.execution_id }) ] }}"
+        }
+      },
+      "id": "62fcc261-ffa5-46ab-ac93-40b4d6d590fe",
+      "name": "Write Error to Audit Log",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "your-team@example.com",
+        "subject": "=[CompanyFlow] {{ $('Summarize Error (no PII)').first().json.severity }} — {{ $('Summarize Error (no PII)').first().json.workflow_name }} failed",
+        "emailType": "html",
+        "message": "=<p><b>Workflow:</b> {{ $('Summarize Error (no PII)').first().json.workflow_name }}<br><b>Node:</b> {{ $('Summarize Error (no PII)').first().json.failed_node }}<br><b>Error:</b> {{ $('Summarize Error (no PII)').first().json.error_message }}<br><b>When:</b> {{ $('Summarize Error (no PII)').first().json.at }}<br><b>Execution:</b> <a href=\"{{ $('Summarize Error (no PII)').first().json.execution_url }}\">open in n8n</a></p><p>Audit log row: {{ $json.result.audit_id }}</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3f87b3a9-96f9-4598-ba1b-e38009139c68",
+      "name": "Alert Team by Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cfGmail0000001",
+          "name": "CF Gmail"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Change sendTo to your team's address. Disable this node if you have no Gmail credential."
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                0
+              ],
+              "triggerAtHour": 3,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "52fa0125-94d4-4cfe-8611-02020e3b9cff",
+      "name": "Every Sunday 03:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_retention_purge($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ chat_days: 90, candidate_days: 365 }) ] }}"
+        }
+      },
+      "id": "b8e43028-d74f-4ff1-895e-8e9c72f8ebf7",
+      "name": "Purge Chats & Anonymise Old Candidates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        260
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Summarize Error (no PII)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Error (no PII)": {
+      "main": [
+        [
+          {
+            "node": "Write Error to Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Error to Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Alert Team by Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Sunday 03:00": {
+      "main": [
+        [
+          {
+            "node": "Purge Chats & Anonymise Old Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Africa/Cairo"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

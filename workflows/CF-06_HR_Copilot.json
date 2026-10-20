@@ -1,0 +1,1482 @@
+{
+  "name": "CF-06 HR Copilot (Plan → Approve → Execute)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CF-06 · HR Copilot  `POST /webhook/cf/hr/copilot`  (HR token only)\n**Real planning for multi-step recruitment workflows** with a human in the loop:\n1. `mode: plan` → Planner LLM writes a JSON plan (steps, tools, consequential flags) → saved in `agent_plans` → returned to HR.\n2. HR reviews it in the dashboard → `mode: execute, plan_id` → plan is locked (`proposed → executing`, only by its author) → the Copilot agent runs it with tools.\n3. `mode: chat` → direct questions without a plan.\n\nEvery request, plan approval and execution is written to the audit log.",
+        "height": 330,
+        "width": 900,
+        "color": 7
+      },
+      "id": "045d4239-b416-4f88-9840-664aebe7a4ed",
+      "name": "Sticky Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cf/hr/copilot",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "3b131844-3fc8-4dae-85c6-5bf607cb15aa",
+      "name": "POST /cf/hr/copilot",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "7711bd2e-deb7-4a2d-acdf-0fbaea02e6d1"
+    },
+    {
+      "parameters": {
+        "operation": "verify",
+        "token": "={{ String($('POST /cf/hr/copilot').first().json.headers.authorization || '').replace(/^Bearer\\s+/i, '') }}",
+        "options": {
+          "algorithm": "HS256"
+        }
+      },
+      "id": "f615b600-5d55-4da1-a621-e9c6c65cbc88",
+      "name": "Verify Session Token",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "cfJwt000000001",
+          "name": "CF JWT Signing Key"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Signature + expiry check with the secret stored in the 'CF JWT Signing Key' credential. Any failure → error output → 401."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_log($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ action: 'auth_rejected', outcome: 'denied', entity_type: 'api', entity_id: 'cf/hr/copilot', details: { reason: String($json.error?.message || $json.error || 'invalid token').slice(0, 200) }, workflow: 'CF-06' }) ] }}"
+        }
+      },
+      "id": "aaceaa9f-5a53-4c97-ba7e-b8dff1508c98",
+      "name": "Log Rejected Token",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        440,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'unauthorized' } }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "0bd65a0e-1a53-478f-8a79-5d7c23faf4a7",
+      "name": "401 Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// \"Authorize HR\" — only the hr role passes; everything else is denied and audited\nconst p = $input.first().json.payload || {};\nconst req = $('POST /cf/hr/copilot').first().json;\nconst b = req.body || {};\nconst ALLOWED = ['plan', 'execute', 'chat'];\nconst key = String(b.mode || '').toLowerCase().trim();\nconst denied = [];\nif (p.iss !== 'companyflow' || p.aud !== 'companyflow-portal' || !p.sub) denied.push('invalid_token_claims');\nelse if (p.role !== 'hr') denied.push(`role \"${p.role}\" is not HR staff`);\nconst invalid = [];\nif (!denied.length && !ALLOWED.includes(key)) invalid.push(`unknown mode \"${key}\" (allowed: ${ALLOWED.join(', ')})`);\nif (!denied.length && !invalid.length) {\n  if ((key === 'plan' || key === 'chat') && !String(b.message || '').trim()) invalid.push('message is required');\n  if (key === 'execute' && !(parseInt(b.plan_id, 10) > 0)) invalid.push('plan_id is required to execute');\n}\nreturn [{ json: {\n  allowed: denied.length === 0 && invalid.length === 0,\n  http_status: denied.length ? 403 : invalid.length ? 400 : 200,\n  reasons: [...denied, ...invalid],\n  mode: key,\n  identity: { user_id: p.sub, role: p.role, email: p.email, name: p.name },\n  body: b,\n  ip: String((req.headers || {})['x-forwarded-for'] || '').split(',')[0].trim(),\n} }];\n"
+      },
+      "id": "1c7c1a7e-1b21-4a09-86a1-32a377cdc894",
+      "name": "Authorize HR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a00f8190-8989-41ff-ba2f-f6ecf36ba72d",
+              "leftValue": "={{ $json.allowed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "d47ab1f8-cc90-4b9d-9544-e5b2846c23a0",
+      "name": "Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_log($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ actor_id: $json.identity.user_id, actor_role: $json.identity.role, action: 'access_denied', outcome: 'denied', entity_type: 'api', entity_id: 'cf/hr/copilot', details: { reasons: $json.reasons, ip: $json.ip }, workflow: 'CF-06' }) ] }}"
+        }
+      },
+      "id": "eb523119-8441-498e-af42-4e3fa22cf0e9",
+      "name": "Log Denied Request",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        220
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $('Authorize HR').first().json.http_status === 403 ? 'forbidden' : 'bad_request', reasons: $('Authorize HR').first().json.reasons } }}",
+        "options": {
+          "responseCode": "={{ $('Authorize HR').first().json.http_status }}"
+        }
+      },
+      "id": "b80d5ad1-fc7c-4d06-9fcb-62722002da0e",
+      "name": "Denied Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a0fcdd36-8451-4e8c-8d8a-dec680c29ef6",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "plan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "plan"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e23d559f-e708-4fdd-afc1-fc2e6213faf5",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "execute",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "execute"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b8907a73-68d5-48ce-805d-9aac5befa831",
+                    "leftValue": "={{ $json.mode }}",
+                    "rightValue": "chat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "chat"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "7353e122-8030-46c3-b05d-1a18fd4dd109",
+      "name": "Plan, Execute or Chat?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        880,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_hr_context($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({}) ] }}"
+        }
+      },
+      "id": "6632b38d-e31f-4f1e-88ee-f025eab25dd5",
+      "name": "Load Pipeline Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        -260
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'HR request: ' + $('Authorize HR').first().json.body.message + '\\n\\nLive pipeline:\\n' + JSON.stringify($json.result.jobs) + '\\nNow (Cairo): ' + $json.result.now_cairo }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You are the PLANNER of CompanyFlow HR Copilot. You never execute anything: you write a short, safe, step-by-step plan that an executor agent will run only AFTER an HR staff member approves it.\nExecutor tools (use these exact names): pipeline_overview (open jobs + pipeline counts) · rank_candidates (top N for one job_id) · application_details (explainable breakdown of one application_id) · screen_application (re-run screening for one application_id) · update_application_status (move one application to shortlisted/rejected/interviewed/offer/hired… with a reason) · interview_scheduler (list_slots or book for a shortlisted application_id) · hr_policy_search · job_requirements_search · hire_patterns_search.\nRules: 2–8 steps, ONE tool per step, ordered so later steps use earlier results; mark data-changing steps consequential=true; never plan a rejection without a job-related reason; never use protected characteristics (gender, age, religion, marital/military status, nationality, disability); if the request is ambiguous write an assumption instead of guessing silently."
+            }
+          ]
+        }
+      },
+      "id": "ecaa1856-c4d5-4ab0-82ff-2750b2c518ba",
+      "name": "Planner (LLM)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1340,
+        -260
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"goal\": {\n      \"type\": \"string\"\n    },\n    \"assumptions\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"steps\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"step\": {\n            \"type\": \"integer\"\n          },\n          \"tool\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"pipeline_overview\",\n              \"rank_candidates\",\n              \"application_details\",\n              \"screen_application\",\n              \"update_application_status\",\n              \"interview_scheduler\",\n              \"hr_policy_search\",\n              \"job_requirements_search\",\n              \"hire_patterns_search\"\n            ]\n          },\n          \"purpose\": {\n            \"type\": \"string\"\n          },\n          \"inputs\": {\n            \"type\": \"string\",\n            \"description\": \"Tool inputs as short text, e.g. job_id=SOC-L1, limit=3\"\n          },\n          \"consequential\": {\n            \"type\": \"boolean\",\n            \"description\": \"true if the step changes data (status, booking, re-screening)\"\n          }\n        },\n        \"required\": [\n          \"step\",\n          \"tool\",\n          \"purpose\",\n          \"inputs\",\n          \"consequential\"\n        ]\n      }\n    },\n    \"risks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }\n  },\n  \"required\": [\n    \"goal\",\n    \"steps\"\n  ]\n}"
+      },
+      "id": "00077ea6-1043-4832-a9f6-66d8b99ca496",
+      "name": "Plan Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1500,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "3e0e1b07-1f6c-42b9-b337-feb9980b86d9",
+      "name": "Gemini (planner)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        -40
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "cfGemini000001",
+          "name": "CF Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_save_plan($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ actor_id: $('Authorize HR').first().json.identity.user_id, request: $('Authorize HR').first().json.body.message, plan: $json.output }) ] }}"
+        }
+      },
+      "id": "a190c0e6-e5b8-4892-a0ad-be1fe1f4afcc",
+      "name": "Save Proposed Plan",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1600,
+        -260
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { plan_id: $json.result.plan_id, plan: $('Planner (LLM)').first().json.output, requires_approval: true, message: 'Review the plan. To run it, call mode=execute with this plan_id.' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "19733ab7-edb8-4583-ab73-3f4325361bd7",
+      "name": "200 Proposed Plan",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1820,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'planner_failed', message: 'Could not build a plan. Rephrase the request or try again.' } }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "af6b8a18-7031-4f66-86b8-7691dc702107",
+      "name": "502 Planner Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_start_plan($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ plan_id: $json.body.plan_id, actor_id: $json.identity.user_id }) ] }}"
+        }
+      },
+      "id": "47e18c21-270c-4b9e-b1ac-42ee7eeece3b",
+      "name": "Start Approved Plan",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7a9d1608-1782-43aa-a94e-d89ba2d4d7df",
+              "leftValue": "={{ $json.result.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "4dcb3922-93aa-4423-b9a6-e24e0ac0000e",
+      "name": "Plan Executable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.result }}",
+        "options": {
+          "responseCode": 409
+        }
+      },
+      "id": "807fd94b-ac6c-4e40-b59e-c22bec1ea23d",
+      "name": "409 Plan Not Executable",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1560,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-06 · \"Build Executor Prompt\" — turns the HR-approved plan into the agent's instructions\nconst r = $input.first().json.result;\nconst steps = (r.plan.steps || []).map(s => `${s.step}. [${s.tool}] ${s.purpose} — inputs: ${s.inputs}`).join('\\n');\nreturn [{ json: {\n  plan_id: r.plan_id,\n  agent_input: `EXECUTE APPROVED PLAN #${r.plan_id}\\nOriginal HR request: ${r.request}\\nGoal: ${r.plan.goal}\\n\\nSteps:\\n${steps}\\n\\n` +\n    `Execute the steps in order using your tools. After the last step reply with: a one-line outcome, then one line per step \"✓/✗ step N — what happened\".`,\n} }];\n"
+      },
+      "id": "1bc74745-4ab9-494d-ace2-87d1694838ce",
+      "name": "Build Executor Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-06 · \"Build Chat Prompt\" — direct question, no plan\nconst a = $('Authorize HR').first().json;\nreturn [{ json: { plan_id: null, agent_input: String(a.body.message || '').slice(0, 3000) } }];\n"
+      },
+      "id": "7f0126d5-60d4-4383-9196-f5ec0cd05fab",
+      "name": "Build Chat Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.agent_input }}",
+        "options": {
+          "systemMessage": "=You are CompanyFlow HR Copilot, the assistant for HR STAFF. Verified user: {{ $('Authorize HR').first().json.identity.name }} (role: hr). Today is {{ $now.setZone('Africa/Cairo').toFormat('cccc d LLLL yyyy, HH:mm') }} (Cairo time).\nYou help run recruitment: rank candidates, explain screening results, update statuses, re-run screening, schedule interviews and answer policy questions.\nRULES\n- Use tools for every fact. Never invent candidates, scores, IDs or slots. Valid job IDs come from pipeline_overview.\n- Screening scores are RECOMMENDATIONS from a deterministic rubric; HR decides. When you report a score give the main reasons (must-have matched / missing).\n- Never use protected characteristics (gender, age, religion, marital or military status, nationality, disability) in any reasoning.\n- A rejection needs a job-related reason; if HR did not give one, ask for it instead of calling the tool.\n- Candidates appear as candidate codes until shortlisted (blind screening). Do not try to reveal identities.\n- When executing an approved plan, follow its steps in order; if a step fails, continue with independent steps and report it.\n- Be concise; use short bullet lists for rankings.",
+          "maxIterations": 14,
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "040e5d5a-905d-4e94-9d8c-e81a1dc4d6b8",
+      "name": "HR Copilot Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        120
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "6143fce4-a8d2-42d9-8a52-c83be32f07d3",
+      "name": "Gemini (copilot)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        560
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "cfGemini000001",
+          "name": "CF Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ 'hr:' + $('Authorize HR').first().json.identity.user_id + ':copilot' }}",
+        "tableName": "n8n_chat_histories",
+        "contextWindowLength": 10
+      },
+      "id": "6fecd5ef-7884-4678-a1a1-bafaa80683e8",
+      "name": "Copilot Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1680,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Open jobs with pipeline counts per status, unscreened applications and open interview slots. No input.",
+        "operation": "executeQuery",
+        "query": "select public.cf_hr_context($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({}) ] }}"
+        }
+      },
+      "id": "937132c6-0e8e-4976-846d-c27e1cf28fb6",
+      "name": "pipeline_overview",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1860,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Top candidates for ONE job ranked by screening score, with must-have coverage and gaps. Inputs: job_id (e.g. SOC-L1) and limit (1-20).",
+        "operation": "executeQuery",
+        "query": "select public.cf_hr_rank($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ job_id: $fromAI('job_id', 'job ID such as SOC-L1', 'string'), limit: $fromAI('limit', 'how many candidates 1 to 20', 'number'), actor_id: $('Authorize HR').first().json.identity.user_id, via: 'copilot' }) ] }}"
+        }
+      },
+      "id": "0bb38000-4e50-4261-b413-55826b6fc141",
+      "name": "rank_candidates",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2040,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Full explainable screening breakdown, status history and interviews for ONE application_id.",
+        "operation": "executeQuery",
+        "query": "select public.cf_hr_application_detail($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ application_id: $fromAI('application_id', 'numeric application id', 'number'), actor_id: $('Authorize HR').first().json.identity.user_id, via: 'copilot' }) ] }}"
+        }
+      },
+      "id": "e73588d9-b459-4fe3-986c-03f4d66e6f30",
+      "name": "application_details",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2220,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Move ONE application to a new status: shortlisted, rejected, interviewed, offer, hired, needs_info or screened. A job-related reason is mandatory for rejections.",
+        "operation": "executeQuery",
+        "query": "select public.cf_set_application_status($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ application_id: $fromAI('application_id', 'numeric application id', 'number'), new_status: $fromAI('new_status', 'target status', 'string'), reason: $fromAI('reason', 'job-related reason for the change', 'string'), actor_id: $('Authorize HR').first().json.identity.user_id, actor_role: 'hr', via: 'copilot' }) ] }}"
+        }
+      },
+      "id": "65d2a9bb-441d-4ec7-841e-03ef8555dca3",
+      "name": "update_application_status",
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2400,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Re-run the automated résumé screening for ONE application_id and return the new score and explanation.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_CF-03_ID",
+          "mode": "list",
+          "cachedResultName": "CF-03 Resume Screening Engine"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "application_id": "={{ $fromAI('application_id', 'numeric application id', 'number') }}",
+            "actor_id": "={{ $('Authorize HR').first().json.identity.user_id }}",
+            "actor_role": "hr",
+            "reason": "re-screen requested in HR Copilot"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "application_id",
+              "displayName": "application_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "actor_id",
+              "displayName": "actor_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "actor_role",
+              "displayName": "actor_role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "6de74217-6629-415a-8fda-07125027173a",
+      "name": "screen_application",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2580,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "description": "List open interview slots (action list_slots) or book one (action book, needs slot_id) for ONE shortlisted application_id.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_CF-04_ID",
+          "mode": "list",
+          "cachedResultName": "CF-04 Interview Scheduler"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "action": "={{ $fromAI('action', 'list_slots or book', 'string') }}",
+            "application_id": "={{ $fromAI('application_id', 'numeric application id', 'number') }}",
+            "slot_id": "={{ $fromAI('slot_id', 'slot id to book or 0 when listing', 'number') }}",
+            "actor_id": "={{ $('Authorize HR').first().json.identity.user_id }}",
+            "actor_role": "hr"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "application_id",
+              "displayName": "application_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "slot_id",
+              "displayName": "slot_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "actor_id",
+              "displayName": "actor_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "actor_role",
+              "displayName": "actor_role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": true,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "c8f4dd58-37b2-43ed-8390-0d70b9f0c1fc",
+      "name": "interview_scheduler",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2760,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search the CompanyFlow Employee Handbook (cite the section numbers).",
+        "tableName": "kb_hr_policy",
+        "topK": 5,
+        "includeDocumentMetadata": true,
+        "options": {}
+      },
+      "id": "2f990350-3e25-4cff-8b26-09fdad05754b",
+      "name": "hr_policy_search",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        2940,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search job descriptions; results are tagged with job ID so look-alike roles (SOC-L1 vs SOC-L2, DA-JR vs BI-DEV, CS-EN vs TS-L1) can be told apart.",
+        "tableName": "kb_job_descriptions",
+        "topK": 6,
+        "includeDocumentMetadata": true,
+        "options": {}
+      },
+      "id": "12b5b205-3aee-46aa-8c89-a7004030a3ec",
+      "name": "job_requirements_search",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        3120,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Anonymised skill patterns of past successful hires per role family (no personal data). Use as context only, never as a reason to reject.",
+        "tableName": "kb_hire_patterns",
+        "topK": 4,
+        "includeDocumentMetadata": true,
+        "options": {}
+      },
+      "id": "3b9dc6a3-1490-4d46-8fcc-f0ffb31c07c5",
+      "name": "hire_patterns_search",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        3300,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "id": "8a63296c-589b-4861-b910-777e11c42185",
+      "name": "Gemini Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        760
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "cfGemini000001",
+          "name": "CF Gemini API"
+        }
+      },
+      "notes": "Must be the SAME embedding model everywhere (ingestion and retrieval)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-06 · \"Shape Copilot Reply\"\nconst j = $input.first().json;\nconst a = $('Authorize HR').first().json;\nconst steps = Array.isArray(j.intermediateSteps) ? j.intermediateSteps : [];\nconst tools = [...new Set(steps.map(s => s && s.action && s.action.tool).filter(Boolean))];\nlet planId = null;\ntry { planId = $('Build Executor Prompt').first().json.plan_id; } catch (e) { planId = null; }\nreturn [{ json: { reply: String(j.output || ''), tools_used: tools, plan_id: planId, mode: a.mode } }];\n"
+      },
+      "id": "d3c095f8-c44a-44e5-8ec5-b4b03cfc2333",
+      "name": "Shape Copilot Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_finish_plan($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ plan_id: $json.plan_id, actor_id: $('Authorize HR').first().json.identity.user_id, status: 'completed', result: $json.reply, mode: $json.mode, tools_used: $json.tools_used, message: $('Authorize HR').first().json.body.message || '' }) ] }}"
+        }
+      },
+      "id": "27f0ff6d-7e50-4454-bb9c-0622f2b274b1",
+      "name": "Close Plan & Audit",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2340,
+        120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { reply: $('Shape Copilot Reply').first().json.reply, tools_used: $('Shape Copilot Reply').first().json.tools_used, plan_id: $('Shape Copilot Reply').first().json.plan_id } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "38f3f055-31c7-4e52-bd48-a508e2034747",
+      "name": "200 Copilot Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2560,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let planId = null;\ntry { planId = $('Build Executor Prompt').first().json.plan_id; } catch (e) {}\nreturn [{ json: { plan_id: planId, error: String($input.first().json.error?.message || $input.first().json.error || 'agent error').slice(0, 300) } }];"
+      },
+      "id": "c63d89bd-b41e-46e0-8849-42d1b1030617",
+      "name": "Plan Failed Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_finish_plan($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ plan_id: $json.plan_id, actor_id: $('Authorize HR').first().json.identity.user_id, status: 'failed', result: $json.error, mode: $('Authorize HR').first().json.mode }) ] }}"
+        }
+      },
+      "id": "ce3a4835-390a-444b-90be-32f88a792347",
+      "name": "Mark Plan Failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2340,
+        320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'copilot_failed', message: 'The copilot could not finish. Partial changes are listed in the audit log.' } }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "1accd541-2e4f-4c79-b133-146de0019e7d",
+      "name": "502 Copilot Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2560,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "POST /cf/hr/copilot": {
+      "main": [
+        [
+          {
+            "node": "Verify Session Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Session Token": {
+      "main": [
+        [
+          {
+            "node": "Authorize HR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rejected Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Rejected Token": {
+      "main": [
+        [
+          {
+            "node": "401 Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorize HR": {
+      "main": [
+        [
+          {
+            "node": "Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Plan, Execute or Chat?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Denied Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Denied Request": {
+      "main": [
+        [
+          {
+            "node": "Denied Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan, Execute or Chat?": {
+      "main": [
+        [
+          {
+            "node": "Load Pipeline Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start Approved Plan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Chat Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Pipeline Context": {
+      "main": [
+        [
+          {
+            "node": "Planner (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planner (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Save Proposed Plan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "502 Planner Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Proposed Plan": {
+      "main": [
+        [
+          {
+            "node": "200 Proposed Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Approved Plan": {
+      "main": [
+        [
+          {
+            "node": "Plan Executable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Executable?": {
+      "main": [
+        [
+          {
+            "node": "Build Executor Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "409 Plan Not Executable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Executor Prompt": {
+      "main": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Chat Prompt": {
+      "main": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HR Copilot Agent": {
+      "main": [
+        [
+          {
+            "node": "Shape Copilot Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Plan Failed Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Copilot Reply": {
+      "main": [
+        [
+          {
+            "node": "Close Plan & Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Close Plan & Audit": {
+      "main": [
+        [
+          {
+            "node": "200 Copilot Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Failed Info": {
+      "main": [
+        [
+          {
+            "node": "Mark Plan Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Plan Failed": {
+      "main": [
+        [
+          {
+            "node": "502 Copilot Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini (planner)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Planner (LLM)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Planner (LLM)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini (copilot)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copilot Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pipeline_overview": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rank_candidates": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "application_details": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "screen_application": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_application_status": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "interview_scheduler": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "hr_policy_search": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "job_requirements_search": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "hire_patterns_search": {
+      "ai_tool": [
+        [
+          {
+            "node": "HR Copilot Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "hr_policy_search",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "job_requirements_search",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "hire_patterns_search",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Africa/Cairo"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

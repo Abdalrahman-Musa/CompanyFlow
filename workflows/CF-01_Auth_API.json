@@ -1,0 +1,435 @@
+{
+  "name": "CF-01 Auth API (Login & Register)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CF-01 · Auth API  `POST /webhook/cf/auth`\nBody: `{action:'login'|'register', email, password, full_name?}` → `{token, user}`\n\n• Passwords are checked **inside Postgres with bcrypt** (`crypt()`), never compared in n8n.\n• 5 wrong passwords → account locked 15 min. Every attempt is audited.\n• Only **candidates** can self-register; employee/HR accounts are created by an admin in SQL.\n• The JWT is signed with the secret in the **CF JWT Signing Key** credential (HS256, 4 h candidates / 8 h staff).\n• Workflow settings: executions are **not saved** (they would contain passwords).",
+        "height": 330,
+        "width": 820,
+        "color": 7
+      },
+      "id": "6bf5f26b-9c12-4043-890f-c7c8170cc0ba",
+      "name": "Sticky Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cf/auth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "808731d0-82e1-4fa0-aaef-437245d293fd",
+      "name": "POST /cf/auth",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "58509d56-5766-4e73-9ec8-1fbb630f2ef0"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-01 · \"Validate Auth Request\" — input validation before anything touches the database\nconst req = $input.first().json;\nconst b = req.body || {};\nconst h = req.headers || {};\nconst action = String(b.action || '').toLowerCase().trim();\nconst email = String(b.email || '').trim().toLowerCase();\nconst password = String(b.password || '');\nconst errors = [];\nif (!['login', 'register'].includes(action)) errors.push('action must be \"login\" or \"register\"');\nif (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || email.length > 120) errors.push('a valid email is required');\nif (!password || password.length > 128) errors.push('password is required (max 128 characters)');\nif (action === 'register') {\n  if (password.length < 10 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) errors.push('password needs at least 10 characters with letters and numbers');\n  if (String(b.full_name || '').trim().length < 3) errors.push('full_name is required');\n}\nreturn [{ json: {\n  ok: errors.length === 0, errors, action, email, password,\n  full_name: String(b.full_name || '').trim().slice(0, 120),\n  phone: String(b.phone || '').trim().slice(0, 30),\n  ip: String(h['x-forwarded-for'] || h['x-real-ip'] || '').split(',')[0].trim(),\n  user_agent: String(h['user-agent'] || '').slice(0, 200),\n} }];\n"
+      },
+      "id": "dcd49d85-3dec-4bb7-aab1-a5ba8dc23ea0",
+      "name": "Validate Auth Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "879b8902-31be-4b06-9119-c63d34466d73",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "2234e460-e28b-4997-bcf6-551d0228675e",
+      "name": "Request Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'invalid_request', details: $json.errors } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "14de1941-697c-4e9a-815e-1a1bf8728d8d",
+      "name": "400 Bad Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7a3e5b0f-d13d-47f0-8723-51683ea7718e",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "login",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "login"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "abd1954d-eed5-47e8-ae3e-f5ab91a276eb",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "register",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "register"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "fc67cbe7-ab3f-47bb-9187-e2eb2a1ebe9a",
+      "name": "Login or Register?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        660,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_login($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ email: $json.email, password: $json.password, ip: $json.ip, user_agent: $json.user_agent }) ] }}"
+        }
+      },
+      "id": "5c4541d1-72bd-461a-a58a-1908efbe6b92",
+      "name": "Check Password (bcrypt)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        900,
+        -120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_register_candidate($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ email: $json.email, password: $json.password, full_name: $json.full_name, phone: $json.phone, ip: $json.ip }) ] }}"
+        }
+      },
+      "id": "3f40a1d8-2968-4c4c-aa73-4d957cf9f9f5",
+      "name": "Create Candidate Account",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        900,
+        80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "852da832-5cc5-4ea9-990d-78bae4046ee8",
+              "leftValue": "={{ $json.result.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "e65deec1-4b56-4a4d-894e-f3104ec841d2",
+      "name": "Credentials OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1140,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sign",
+        "useJson": true,
+        "claimsJson": "={{ JSON.stringify({ sub: $json.result.user.id, email: $json.result.user.email, name: $json.result.user.full_name, role: $json.result.user.role, dept: $json.result.user.department, iss: 'companyflow', aud: 'companyflow-portal', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + ($json.result.user.role === 'candidate' ? 4 : 8) * 3600 }) }}",
+        "options": {
+          "algorithm": "HS256"
+        }
+      },
+      "id": "39650afe-710d-4f1f-bc9c-9d99463cac61",
+      "name": "Sign Session Token (JWT)",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        -120
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "cfJwt000000001",
+          "name": "CF JWT Signing Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { token: $json.token, token_type: 'Bearer', expires_in: ($('Credentials OK?').first().json.result.user.role === 'candidate' ? 4 : 8) * 3600, user: { name: $('Credentials OK?').first().json.result.user.full_name, role: $('Credentials OK?').first().json.result.user.role, email: $('Credentials OK?').first().json.result.user.email } } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "2391f899-3820-4018-9547-e0d9d02098c5",
+      "name": "200 Token",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $json.result.error, message: $json.result.message || null, retry_after_minutes: $json.result.retry_after_minutes || null } }}",
+        "options": {
+          "responseCode": "={{ ({ invalid_credentials: 401, account_locked: 423, email_taken: 409 })[$json.result.error] || 400 }}"
+        }
+      },
+      "id": "524c3703-e0d7-4e14-a398-a777ece010b8",
+      "name": "Auth Failed Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1380,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "POST /cf/auth": {
+      "main": [
+        [
+          {
+            "node": "Validate Auth Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Auth Request": {
+      "main": [
+        [
+          {
+            "node": "Request Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Valid?": {
+      "main": [
+        [
+          {
+            "node": "Login or Register?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "400 Bad Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login or Register?": {
+      "main": [
+        [
+          {
+            "node": "Check Password (bcrypt)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Candidate Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Password (bcrypt)": {
+      "main": [
+        [
+          {
+            "node": "Credentials OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Candidate Account": {
+      "main": [
+        [
+          {
+            "node": "Credentials OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Credentials OK?": {
+      "main": [
+        [
+          {
+            "node": "Sign Session Token (JWT)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Auth Failed Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Session Token (JWT)": {
+      "main": [
+        [
+          {
+            "node": "200 Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Africa/Cairo",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

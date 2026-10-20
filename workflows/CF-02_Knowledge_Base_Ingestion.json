@@ -1,0 +1,1116 @@
+{
+  "name": "CF-02 Knowledge Base Ingestion (RAG)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CF-02 · Knowledge Base Ingestion\nThree **separate** vector tables = three retrieval scopes (that is how role-based RAG is enforced):\n• `kb_hr_policy` ← handbook uploaded through the HR form (employees + HR)\n• `kb_job_descriptions` ← synced from the `jobs` table (everyone)\n• `kb_hire_patterns` ← synced from `hire_patterns` (HR + screening engine only)\n\n**Retrieval tuning for look-alike roles:** every chunk starts with a header `[Role | Job ID | Family | Seniority]`, carries `job_id/role_family/seniority` metadata, and each job gets a dedicated *\"how this role differs\"* chunk.",
+        "height": 360,
+        "width": 900,
+        "color": 7
+      },
+      "id": "9cf0be32-44a7-4d05-bb82-974d0ec9fff8",
+      "name": "Sticky Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "CompanyFlow — Upload HR Policy Document",
+        "formDescription": "Upload the employee handbook or another HR policy (PDF, Markdown or TXT). Uploading a document with the same title replaces the previous version in the knowledge base.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Document file",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".pdf,.md,.txt",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Document title",
+              "placeholder": "CompanyFlow Employee Handbook",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Version",
+              "placeholder": "2026.2",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Uploaded by",
+              "placeholder": "Your name",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "path": "cf-kb-upload",
+          "buttonLabel": "Upload & index",
+          "appendAttribution": false
+        }
+      },
+      "id": "35bf940f-3f61-4c95-aaa1-c34c22bfc1ae",
+      "name": "Upload HR Document",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "cfFormAuth0001",
+          "name": "CF HR Forms Login"
+        }
+      },
+      "webhookId": "1e7879d8-80fd-4f2f-8d51-095423e67a14"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0df762df-036a-45fa-9e1e-15a669584d7e",
+                    "leftValue": "={{ ($binary.Document_file?.fileExtension || '').toLowerCase() }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pdf"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "da671407-e31c-46b2-ad6c-49bc0b3d4749",
+                    "leftValue": "={{ ($binary.Document_file?.fileExtension || '').toLowerCase() }}",
+                    "rightValue": "md",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "markdown"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e177461b-b65b-40f0-b04e-ea33f7db0d1c",
+                    "leftValue": "={{ ($binary.Document_file?.fileExtension || '').toLowerCase() }}",
+                    "rightValue": "txt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Other"
+        }
+      },
+      "id": "95fc46a1-a1f0-47c6-a0bb-e058c6bc91e7",
+      "name": "File Type?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Document_file",
+        "options": {
+          "joinPages": true,
+          "keepSource": "json"
+        }
+      },
+      "id": "f0561c45-6b9a-467f-b07a-21c4ed061ac8",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -120
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "Document_file",
+        "destinationKey": "text",
+        "options": {
+          "keepSource": "json"
+        }
+      },
+      "id": "a7ed283d-a7cd-4e5c-a065-f1e989cee2eb",
+      "name": "Extract Markdown / Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        60
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-02 · \"Normalize Extracted Text\" — one place that validates whatever the extractor produced\nconst j = $input.first().json;\nconst form = $('Upload HR Document').first().json;\nconst text = String(j.text ?? j.data ?? '').replace(/\\u0000/g, '');\nconst clean = text.replace(/[ \\t]+/g, ' ').trim();\nif (clean.length < 200) {\n  throw new Error(`The document has only ${clean.length} characters of text. If it is a scanned PDF, export it as a text-based PDF or upload the .md/.txt version.`);\n}\nreturn [{ json: {\n  text,\n  chars: clean.length,\n  pages: j.numpages || null,\n  doc_title: String(form['Document title'] || 'CompanyFlow Employee Handbook').trim().slice(0, 120),\n  version: String(form['Version'] || 'unversioned').trim().slice(0, 30),\n  uploaded_by: String(form['Uploaded by'] || 'HR admin').trim().slice(0, 80),\n} }];\n"
+      },
+      "id": "5f7db5dc-f6d0-4231-b168-179218c9fa19",
+      "name": "Normalize Extracted Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -40
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_kb_delete_doc($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ table: 'kb_hr_policy', doc_title: $json.doc_title }) ] }}"
+        }
+      },
+      "id": "cca52fed-5e63-421c-bc03-76f434f45276",
+      "name": "Remove Previous Version",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        -40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-02 · \"Section-aware Chunker\" — splits the handbook by numbered / markdown headings and\n// prefixes every chunk with its document + section so retrieval and citations stay precise.\nconst src = $('Normalize Extracted Text').first().json;\nconst docTitle = src.doc_title;\nconst version = src.version;\nlet text = src.text;\n\n// remove repeated page headers/footers and page numbers produced by PDF extraction\nconst lines = text.replace(/\\r/g, '').split('\\n').map(l => l.trim());\nconst freq = {}; for (const l of lines) if (l) freq[l] = (freq[l] || 0) + 1;\nconst clean = lines.filter(l => !/^page \\d+( of \\d+)?$/i.test(l) && !(l.length < 120 && freq[l] >= 3));\n\n// heading detection: \"## 3. Leave Policy\", \"### 3.1 Annual leave\", \"3.1 Annual leave\", \"3. Leave Policy\"\nconst H = /^(?:#{1,4}\\s*)?(\\d{1,2}(?:\\.\\d{1,2})*)\\.?\\s+([A-Z][^.!?]{2,80})$/;\nconst chunks = []; let top = ''; let cur = null;\nconst push = () => { if (cur && cur.body.join(' ').trim().length > 20) chunks.push(cur); };\nfor (const l of clean) {\n  const m = l.match(H);\n  if (m) {\n    push();\n    const num = m[1]; const title = m[2].replace(/^#+\\s*/, '').trim();\n    if (!num.includes('.')) top = num + '. ' + title;\n    cur = { section: num, title, parent: num.includes('.') ? top : '', body: [] };\n  } else if (l && !/^#\\s/.test(l)) {\n    if (!cur) cur = { section: '0', title: 'Introduction', parent: '', body: [] };\n    cur.body.push(l.replace(/^[-•*]\\s*/, '• '));\n  }\n}\npush();\nif (!chunks.length) throw new Error('No sections detected. Use numbered headings like \"3.1 Annual leave\".');\n\nreturn chunks.map((c, i) => {\n  const header = `[${docTitle} v${version} | Section ${c.section} ${c.title}${c.parent ? ' | Part of ' + c.parent : ''}]`;\n  return { json: {\n    chunk_text: header + '\\n' + c.body.join('\\n'),\n    doc_title: docTitle, version, section: c.section, section_title: c.title,\n    parent_section: c.parent, chunk_no: i + 1, chunks_total: chunks.length,\n    uploaded_by: src.uploaded_by, uploaded_at: new Date().toISOString()\n  } };\n});\n"
+      },
+      "id": "01340deb-a6c7-43b9-bd6b-f67f4f93a4ad",
+      "name": "Section-aware Chunker",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "kb_hr_policy",
+        "embeddingBatchSize": 100,
+        "options": {}
+      },
+      "id": "a34078f0-ac8c-447f-a4d5-de5b2d393d7e",
+      "name": "Insert into kb_hr_policy",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        1420,
+        -40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "id": "b83ee692-4e57-4ffa-8906-5f11cd99cb3e",
+      "name": "Gemini Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        360
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "cfGemini000001",
+          "name": "CF Gemini API"
+        }
+      },
+      "notes": "Must be the SAME embedding model everywhere (ingestion and retrieval)."
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.chunk_text }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "collection",
+                "value": "hr_policy"
+              },
+              {
+                "name": "doc_title",
+                "value": "={{ $json.doc_title }}"
+              },
+              {
+                "name": "version",
+                "value": "={{ $json.version }}"
+              },
+              {
+                "name": "section",
+                "value": "={{ $json.section }}"
+              },
+              {
+                "name": "section_title",
+                "value": "={{ $json.section_title }}"
+              },
+              {
+                "name": "parent_section",
+                "value": "={{ $json.parent_section }}"
+              },
+              {
+                "name": "chunk_no",
+                "value": "={{ $json.chunk_no }}"
+              },
+              {
+                "name": "uploaded_at",
+                "value": "={{ $json.uploaded_at }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "ff0817f0-18a5-4175-8261-154cca320abb",
+      "name": "Policy Chunk Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 2000,
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "id": "b28031e5-2ac6-49b5-98fa-98d99df26021",
+      "name": "Safety Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        360
+      ],
+      "notes": "Safety net only: chunks are already section-sized, this splits only unusually long sections."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_log($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ action: 'kb_document_indexed', outcome: 'success', actor_role: 'hr', entity_type: 'kb_hr_policy', entity_id: $('Normalize Extracted Text').first().json.doc_title, details: { version: $('Normalize Extracted Text').first().json.version, chunks: $('Section-aware Chunker').all().length, chars: $('Normalize Extracted Text').first().json.chars, uploaded_by: $('Normalize Extracted Text').first().json.uploaded_by }, workflow: 'CF-02' }) ] }}"
+        }
+      },
+      "id": "7c4c25cb-7a3f-4ccd-9a5c-29cd2e5f58db",
+      "name": "Log Upload to Audit",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1700,
+        -40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "text",
+        "completionTitle": "Indexed ✓",
+        "completionMessage": "={{ 'Indexed ' + $('Section-aware Chunker').all().length + ' sections of \"' + $('Normalize Extracted Text').first().json.doc_title + '\" (v' + $('Normalize Extracted Text').first().json.version + '). Employees can ask the HR Policy Assistant about it now.' }}"
+      },
+      "id": "4adbd0f2-4698-4ea7-9311-112d3ac14618",
+      "name": "Upload Complete",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        1940,
+        -40
+      ],
+      "webhookId": "81333a38-d562-40ec-b89e-2e2b5e1b64bb"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "text",
+        "completionTitle": "Unsupported file",
+        "completionMessage": "Please upload a .pdf, .md or .txt file. Word documents: export them as PDF first."
+      },
+      "id": "007adfcc-272c-4bd9-9f50-86aa1ac2c9f9",
+      "name": "Unsupported File Type",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        480,
+        260
+      ],
+      "webhookId": "f642afff-43cf-4b54-ba7f-24e9f107c268"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "text",
+        "completionTitle": "Could not read the document",
+        "completionMessage": "={{ 'Nothing was indexed. Reason: ' + ($json.error?.message || $json.error || 'the file could not be read') }}"
+      },
+      "id": "bfd03e7c-147d-4712-a128-1c93966ab2f1",
+      "name": "Could Not Read Document",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 1,
+      "position": [
+        960,
+        200
+      ],
+      "webhookId": "0ba2230c-2a18-47d1-a54d-9d88c5557b41"
+    },
+    {
+      "parameters": {
+        "content": "### Branch B — Sync job descriptions & hire patterns\nRun manually after changing `jobs` or `hire_patterns`, and automatically every night 02:30.",
+        "height": 130,
+        "width": 560,
+        "color": 5
+      },
+      "id": "b926aee1-ddc7-47e2-9d5d-d4cefff9618a",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        470
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "de1e80c3-1601-49a4-a529-ecf83dd5335c",
+      "name": "Sync Now (manual)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 2,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "483b4d4c-6db7-44b6-943c-3d192756fe54",
+      "name": "Every Night 02:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_kb_delete_doc($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ table: 'kb_job_descriptions' }) ] }}"
+        }
+      },
+      "id": "b91f826e-f9a6-4587-b6dd-71a2fcdfe724",
+      "name": "Clear Job Vectors",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        720
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select j.* from public.jobs j where j.status = 'open' order by j.id;",
+        "options": {}
+      },
+      "id": "5f3e7dad-8308-457e-adce-37e090247a10",
+      "name": "Load Open Jobs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        460,
+        720
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-02 · \"Build Role-tagged Job Chunks\" — one chunk per JD section, each prefixed with a role\n// header and carrying job_id / role_family / seniority metadata. A dedicated \"how this role\n// differs\" chunk is what lets retrieval separate look-alike roles (SOC-L1 vs SOC-L2 …).\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const header = `[Role: ${j.title} | Job ID: ${j.id} | Family: ${j.role_family} | Seniority: ${j.seniority} | Department: ${j.department} | Min years: ${j.min_years}]`;\n  const desc = String(j.description || '');\n  // split the JD on its section headings\n  const parts = desc.split(/\\n(?=(About the role|Responsibilities|Requirements \\(must have\\)|Nice to have|Experience:))/).filter(p => p && !/^(About the role|Responsibilities|Requirements \\(must have\\)|Nice to have|Experience:)$/.test(p.trim()));\n  const sections = parts.map(p => p.trim()).filter(p => p.length > 30);\n  sections.unshift(`Summary: ${j.summary}`);\n  sections.push(`How ${j.title} (${j.id}) differs from similar roles: ${j.distinguishing_notes || ''}`);\n  const mh = (j.must_have_skills || []).map(g => g.label).join(', ');\n  const nh = (j.nice_to_have_skills || []).map(g => g.label).join(', ');\n  sections.push(`Structured requirements for ${j.id}: must-have — ${mh}. Nice-to-have — ${nh}. Minimum relevant experience: ${j.min_years} years.`);\n  sections.forEach((s, i) => out.push({ json: {\n    chunk_text: header + '\\n' + s,\n    job_id: j.id, title: j.title, role_family: j.role_family, seniority: j.seniority,\n    department: j.department, section_no: i + 1,\n    section_kind: i === 0 ? 'summary' : s.startsWith('How ') ? 'distinguishing' : s.startsWith('Structured') ? 'requirements' : 'description',\n    source: 'jobs_table'\n  } }));\n}\nreturn out;\n"
+      },
+      "id": "93fefbe8-3696-4183-b648-e45af288ab6f",
+      "name": "Build Role-tagged Job Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "kb_job_descriptions",
+        "embeddingBatchSize": 100,
+        "options": {}
+      },
+      "id": "edfef1eb-9e26-42bd-bc67-905191a786db",
+      "name": "Insert into kb_job_descriptions",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        920,
+        720
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.chunk_text }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "collection",
+                "value": "job_descriptions"
+              },
+              {
+                "name": "job_id",
+                "value": "={{ $json.job_id }}"
+              },
+              {
+                "name": "title",
+                "value": "={{ $json.title }}"
+              },
+              {
+                "name": "role_family",
+                "value": "={{ $json.role_family }}"
+              },
+              {
+                "name": "seniority",
+                "value": "={{ $json.seniority }}"
+              },
+              {
+                "name": "department",
+                "value": "={{ $json.department }}"
+              },
+              {
+                "name": "section_kind",
+                "value": "={{ $json.section_kind }}"
+              },
+              {
+                "name": "source",
+                "value": "jobs_table"
+              }
+            ]
+          }
+        }
+      },
+      "id": "61be3c39-a754-495d-b2d0-b910cc37a200",
+      "name": "Job Chunk Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1000,
+        940
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_kb_delete_doc($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ table: 'kb_hire_patterns' }) ] }}"
+        }
+      },
+      "id": "8d46727b-0cbc-4197-98dc-62c97d9d28dc",
+      "name": "Clear Pattern Vectors",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1180,
+        720
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from public.hire_patterns order by id;",
+        "options": {}
+      },
+      "id": "61e036f4-5f0a-4d52-a0f8-6a670359346f",
+      "name": "Load Hire Patterns",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1400,
+        720
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-02 · \"Build Hire-pattern Docs\" — anonymised, skills-only patterns (no demographic data exists)\nreturn $input.all().map(item => {\n  const p = item.json;\n  const ks = (p.key_skills || []).join('|');\n  return { json: {\n    chunk_text: `[Hire pattern ${p.id} | Family: ${p.role_family} | Typical role: ${p.job_id_hint} | Seniority: ${p.seniority}]\\n` +\n                `${p.pattern_summary}\\nKey skills: ${(p.key_skills || []).join(', ')}.\\nSuccess signals: ${(p.success_signals || []).join('; ')}.\\nTypical relevant experience: ${p.typical_years} years.`,\n    pattern_id: p.id, role_family: p.role_family, job_id_hint: p.job_id_hint || '', seniority: p.seniority || '',\n    key_skills: ks, source: 'hire_patterns_table'\n  } };\n});\n"
+      },
+      "id": "9ebd45a9-dc26-40a7-a259-480a0d3b05a3",
+      "name": "Build Hire-pattern Docs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "kb_hire_patterns",
+        "embeddingBatchSize": 100,
+        "options": {}
+      },
+      "id": "18ff98f1-4fc9-4ed8-879f-24b70836a6f5",
+      "name": "Insert into kb_hire_patterns",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        1860,
+        720
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.chunk_text }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "collection",
+                "value": "hire_patterns"
+              },
+              {
+                "name": "pattern_id",
+                "value": "={{ $json.pattern_id }}"
+              },
+              {
+                "name": "role_family",
+                "value": "={{ $json.role_family }}"
+              },
+              {
+                "name": "job_id_hint",
+                "value": "={{ $json.job_id_hint }}"
+              },
+              {
+                "name": "seniority",
+                "value": "={{ $json.seniority }}"
+              },
+              {
+                "name": "key_skills",
+                "value": "={{ $json.key_skills }}"
+              },
+              {
+                "name": "source",
+                "value": "hire_patterns_table"
+              }
+            ]
+          }
+        }
+      },
+      "id": "92a6d14f-a335-4a32-a99e-0993f80e7429",
+      "name": "Pattern Doc Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1940,
+        940
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_log($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ action: 'kb_synced', outcome: 'success', actor_role: 'system', entity_type: 'knowledge_base', entity_id: 'jobs+patterns', details: { job_chunks: $('Build Role-tagged Job Chunks').all().length, pattern_docs: $('Build Hire-pattern Docs').all().length }, workflow: 'CF-02' }) ] }}"
+        }
+      },
+      "id": "358e5fb9-cef9-4e46-8065-a5f2958938a7",
+      "name": "Log KB Sync",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2100,
+        720
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      },
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "Upload HR Document": {
+      "main": [
+        [
+          {
+            "node": "File Type?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File Type?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Markdown / Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Markdown / Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unsupported File Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Normalize Extracted Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Could Not Read Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Markdown / Text": {
+      "main": [
+        [
+          {
+            "node": "Normalize Extracted Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Could Not Read Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Extracted Text": {
+      "main": [
+        [
+          {
+            "node": "Remove Previous Version",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Could Not Read Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Previous Version": {
+      "main": [
+        [
+          {
+            "node": "Section-aware Chunker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Section-aware Chunker": {
+      "main": [
+        [
+          {
+            "node": "Insert into kb_hr_policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into kb_hr_policy": {
+      "main": [
+        [
+          {
+            "node": "Log Upload to Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Upload to Audit": {
+      "main": [
+        [
+          {
+            "node": "Upload Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert into kb_hr_policy",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Insert into kb_job_descriptions",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Insert into kb_hire_patterns",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Chunk Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert into kb_hr_policy",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Safety Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Policy Chunk Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          },
+          {
+            "node": "Job Chunk Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          },
+          {
+            "node": "Pattern Doc Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Now (manual)": {
+      "main": [
+        [
+          {
+            "node": "Clear Job Vectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Night 02:30": {
+      "main": [
+        [
+          {
+            "node": "Clear Job Vectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Job Vectors": {
+      "main": [
+        [
+          {
+            "node": "Load Open Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Open Jobs": {
+      "main": [
+        [
+          {
+            "node": "Build Role-tagged Job Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Role-tagged Job Chunks": {
+      "main": [
+        [
+          {
+            "node": "Insert into kb_job_descriptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into kb_job_descriptions": {
+      "main": [
+        [
+          {
+            "node": "Clear Pattern Vectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Pattern Vectors": {
+      "main": [
+        [
+          {
+            "node": "Load Hire Patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Hire Patterns": {
+      "main": [
+        [
+          {
+            "node": "Build Hire-pattern Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Hire-pattern Docs": {
+      "main": [
+        [
+          {
+            "node": "Insert into kb_hire_patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into kb_hire_patterns": {
+      "main": [
+        [
+          {
+            "node": "Log KB Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Chunk Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert into kb_job_descriptions",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pattern Doc Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert into kb_hire_patterns",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Africa/Cairo"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -1,0 +1,844 @@
+{
+  "name": "CF-07 HR Dashboard API",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CF-07 · HR Dashboard API  `POST /webhook/cf/hr`  (HR token only)\n`action`: dashboard · candidates · application · set_status · audit · verify_audit · generate_slots · eval_runs\n\nEach action has its own fixed SQL function (no dynamic SQL). Opening an application is audited; revealing a blind candidate's identity is audited as **pii_access**. Status changes carry the reviewer's decision time (`review_seconds`) → the efficiency metric on the dashboard.",
+        "height": 300,
+        "width": 820,
+        "color": 7
+      },
+      "id": "b04719dd-84a5-4bb1-ae69-6c6b146d0a17",
+      "name": "Sticky Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cf/hr",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "26fa089b-e1d7-4337-9b15-d59112311a0b",
+      "name": "POST /cf/hr",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "1d451668-c534-49e9-9449-bebf66d31a49"
+    },
+    {
+      "parameters": {
+        "operation": "verify",
+        "token": "={{ String($('POST /cf/hr').first().json.headers.authorization || '').replace(/^Bearer\\s+/i, '') }}",
+        "options": {
+          "algorithm": "HS256"
+        }
+      },
+      "id": "afb59fee-bfa1-4574-ae21-bec45a5592c6",
+      "name": "Verify Session Token",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "cfJwt000000001",
+          "name": "CF JWT Signing Key"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "notes": "Signature + expiry check with the secret stored in the 'CF JWT Signing Key' credential. Any failure → error output → 401."
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_log($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ action: 'auth_rejected', outcome: 'denied', entity_type: 'api', entity_id: 'cf/hr', details: { reason: String($json.error?.message || $json.error || 'invalid token').slice(0, 200), ip: String($('POST /cf/hr').first().json.headers['x-forwarded-for'] || '') }, workflow: 'CF-07' }) ] }}"
+        }
+      },
+      "id": "8a12646c-d03f-4a08-8a5a-d119880260ff",
+      "name": "Log Rejected Token",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        440,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: 'unauthorized' } }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "7f10be1e-85f2-4330-943b-d162bcb5ba97",
+      "name": "401 Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// \"Authorize HR\" — only the hr role passes; everything else is denied and audited\nconst p = $input.first().json.payload || {};\nconst req = $('POST /cf/hr').first().json;\nconst b = req.body || {};\nconst ALLOWED = ['dashboard', 'candidates', 'application', 'set_status', 'audit', 'verify_audit', 'generate_slots', 'eval_runs'];\nconst key = String(b.action || '').toLowerCase().trim();\nconst denied = [];\nif (p.iss !== 'companyflow' || p.aud !== 'companyflow-portal' || !p.sub) denied.push('invalid_token_claims');\nelse if (p.role !== 'hr') denied.push(`role \"${p.role}\" is not HR staff`);\nconst invalid = [];\nif (!denied.length && !ALLOWED.includes(key)) invalid.push(`unknown action \"${key}\" (allowed: ${ALLOWED.join(', ')})`);\n\nreturn [{ json: {\n  allowed: denied.length === 0 && invalid.length === 0,\n  http_status: denied.length ? 403 : invalid.length ? 400 : 200,\n  reasons: [...denied, ...invalid],\n  action: key,\n  identity: { user_id: p.sub, role: p.role, email: p.email, name: p.name },\n  body: b,\n  ip: String((req.headers || {})['x-forwarded-for'] || '').split(',')[0].trim(),\n} }];\n"
+      },
+      "id": "1034c5aa-d081-445f-9d61-22b7ed86d163",
+      "name": "Authorize HR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "782131b5-1759-409a-9141-6537db6d35c9",
+              "leftValue": "={{ $json.allowed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "81715a57-41a4-42a0-a3b7-ee328615bd43",
+      "name": "Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_log($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ actor_id: $json.identity.user_id, actor_role: $json.identity.role, action: 'access_denied', outcome: 'denied', entity_type: 'api', entity_id: 'cf/hr:' + $json.action, details: { reasons: $json.reasons, ip: $json.ip }, workflow: 'CF-07' }) ] }}"
+        }
+      },
+      "id": "79213f68-db8e-4055-b90f-33503519395d",
+      "name": "Log Denied Request",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        220
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: $('Authorize HR').first().json.http_status === 403 ? 'forbidden' : 'bad_request', reasons: $('Authorize HR').first().json.reasons } }}",
+        "options": {
+          "responseCode": "={{ $('Authorize HR').first().json.http_status }}"
+        }
+      },
+      "id": "6a9076bb-4c63-42ca-a2ff-8582ad8de6db",
+      "name": "Denied Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4b673839-4e0e-41ec-bc84-76b31d82a142",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "dashboard",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "dashboard"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9839c290-ce9b-49e1-84f9-df8b0fbfcf71",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "candidates",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "candidates"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4af82714-98c2-44f2-94a2-ac0b5f793bc7",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "application",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "application"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0cdc2bfb-2e3e-49fe-9c15-b74002b7dd52",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "set_status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "set_status"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "818a85d7-daae-4cac-9ccd-e2c3987e4abe",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "audit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "audit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8c3c57d8-7ab2-4f2d-a2d5-7b73340e9b42",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "verify_audit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "verify_audit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2ef9a257-71fa-4302-8b51-683876246fbe",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "generate_slots",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "generate_slots"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f258a645-6c41-4778-8d5d-f660d37db093",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "eval_runs",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "eval_runs"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "7163706b-f1bb-4843-ad9d-13639398969c",
+      "name": "Route by Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        880,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_hr_dashboard($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ include_demo: $json.body.include_demo !== false }) ] }}"
+        }
+      },
+      "id": "3ba7114b-4c99-4f4e-868e-208efd65b3f8",
+      "name": "Dashboard Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        -620
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_hr_candidates($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ job_id: $json.body.job_id || null, status: $json.body.status || null, include_demo: $json.body.include_demo !== false }) ] }}"
+        }
+      },
+      "id": "ae738cbd-4a44-4a67-a212-72a0f3081f90",
+      "name": "Candidate Pipeline",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        -470
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_hr_application_detail($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ application_id: $json.body.application_id, reveal_identity: $json.body.reveal_identity === true, actor_id: $json.identity.user_id, via: 'dashboard' }) ] }}"
+        }
+      },
+      "id": "83c7630c-6574-459b-8c37-41075f6e7ead",
+      "name": "Application Detail (audited)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        -320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_set_application_status($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ application_id: $json.body.application_id, new_status: $json.body.new_status, reason: $json.body.reason || null, review_seconds: $json.body.review_seconds || null, actor_id: $json.identity.user_id, actor_role: 'hr', via: 'dashboard' }) ] }}"
+        }
+      },
+      "id": "0a38d203-6431-4c8b-87f8-79204a88d47e",
+      "name": "Change Status (audited)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        -170
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_audit_recent($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ limit: $json.body.limit || 100, action: $json.body.filter_action || null, outcome: $json.body.filter_outcome || null }) ] }}"
+        }
+      },
+      "id": "2e4de599-4a4d-4be9-b2dd-6ac3f3bd798a",
+      "name": "Recent Audit Log",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        -20
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_verify_audit_chain($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({}) ] }}"
+        }
+      },
+      "id": "bcbcdf6c-4cc8-4138-a13b-c683e4beca00",
+      "name": "Verify Audit Chain",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        130
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_generate_slots($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ days: $json.body.days || 14, job_id: $json.body.job_id || null, interviewer_name: $json.identity.name, interviewer_email: $json.identity.email, actor_id: $json.identity.user_id, actor_role: 'hr' }) ] }}"
+        }
+      },
+      "id": "2882d5f1-0628-4eb7-a36b-336622b92dee",
+      "name": "Generate Interview Slots",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        280
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select jsonb_build_object('ok', true, 'runs', coalesce(jsonb_agg(to_jsonb(r) order by r.run_at desc), '[]'::jsonb)) as result\nfrom (select id, suite, label, passed, total, pass_rate, run_at, details from public.eval_runs order by run_at desc limit 40) r;",
+        "options": {}
+      },
+      "id": "4c7c99bf-b9cd-42f8-8c26-6a9de34933c4",
+      "name": "Evaluation Runs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        430
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.result }}",
+        "options": {
+          "responseCode": "={{ $json.result && $json.result.ok === false ? 409 : 200 }}"
+        }
+      },
+      "id": "b78246f8-9369-4280-ad93-70145c8f3ee8",
+      "name": "200 / 409 Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1420,
+        -100
+      ]
+    }
+  ],
+  "connections": {
+    "POST /cf/hr": {
+      "main": [
+        [
+          {
+            "node": "Verify Session Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Session Token": {
+      "main": [
+        [
+          {
+            "node": "Authorize HR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rejected Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Rejected Token": {
+      "main": [
+        [
+          {
+            "node": "401 Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorize HR": {
+      "main": [
+        [
+          {
+            "node": "Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Route by Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Denied Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Denied Request": {
+      "main": [
+        [
+          {
+            "node": "Denied Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Action": {
+      "main": [
+        [
+          {
+            "node": "Dashboard Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Candidate Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Application Detail (audited)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Change Status (audited)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recent Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Verify Audit Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Interview Slots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Evaluation Runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dashboard Metrics": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Pipeline": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Application Detail (audited)": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change Status (audited)": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recent Audit Log": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Audit Chain": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Interview Slots": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluation Runs": {
+      "main": [
+        [
+          {
+            "node": "200 / 409 Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Africa/Cairo"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

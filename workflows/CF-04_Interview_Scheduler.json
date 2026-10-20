@@ -1,0 +1,544 @@
+{
+  "name": "CF-04 Interview Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CF-04 · Interview Scheduler (sub-workflow / agent tool)\n`action: list_slots | book` for ONE application.\n\n• **Ownership is checked in SQL**: a candidate can only see/book slots for their own *shortlisted* application.\n• Booking uses row locks (`SELECT … FOR UPDATE`) → no double booking.\n• Google Calendar + Gmail run *after* the booking is saved; if Google fails the booking still stands (nodes continue on error).\n• The result returned to the AI agent contains **no candidate e-mail** (data minimisation).",
+        "height": 300,
+        "width": 820,
+        "color": 7
+      },
+      "id": "60626ee6-ecf3-4769-bb31-9707fb706fe1",
+      "name": "Sticky Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "action",
+              "type": "string"
+            },
+            {
+              "name": "application_id",
+              "type": "number"
+            },
+            {
+              "name": "slot_id",
+              "type": "number"
+            },
+            {
+              "name": "actor_id",
+              "type": "string"
+            },
+            {
+              "name": "actor_role",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "ed399779-c121-464b-9534-0db3c9a6d0c5",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CF-04 · \"Validate Request\" — the scheduler never trusts its caller blindly\nconst j = $input.first().json;\nconst action = String(j.action || '').toLowerCase().trim();\nconst appId = parseInt(j.application_id, 10);\nconst slotId = parseInt(j.slot_id, 10);\nconst role = String(j.actor_role || '');\nconst errors = [];\nif (!['list_slots', 'book'].includes(action)) errors.push('action must be list_slots or book');\nif (!Number.isInteger(appId) || appId <= 0) errors.push('application_id must be a positive number');\nif (action === 'book' && (!Number.isInteger(slotId) || slotId <= 0)) errors.push('slot_id is required to book');\nif (!['candidate', 'hr'].includes(role)) errors.push('actor_role must be candidate or hr');\nif (!j.actor_id) errors.push('actor_id is required');\nreturn [{ json: { valid: errors.length === 0, errors, action, application_id: appId, slot_id: slotId || null, actor_id: String(j.actor_id || ''), actor_role: role } }];\n"
+      },
+      "id": "6f2ae1f5-2899-4f73-9fa2-d42f67fccd46",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8aa063fa-cce4-4766-8fa3-006dbb76cef8",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c8e95614-a3bd-4852-8eca-c49fe015349f",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ok: false, error: 'invalid_request', details: $input.first().json.errors } }];"
+      },
+      "id": "2159f47d-a3ce-4389-a915-c72a561823e0",
+      "name": "Return: Invalid Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d3a18a5c-60f3-4bae-b4a6-1d1945bd6f25",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_slots",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a4cf7412-9c9d-4f55-b2b8-4782b2373e30",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "book",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "book"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "f45545cd-d178-47d4-943c-24f815615dc5",
+      "name": "List or Book?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        660,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_list_slots($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ application_id: $json.application_id, actor_id: $json.actor_id, actor_role: $json.actor_role }) ] }}"
+        }
+      },
+      "id": "8686bc97-95a7-4842-a2e5-39cb1ad480bf",
+      "name": "List Open Slots",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        900,
+        -140
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.result }];"
+      },
+      "id": "bc9aa4ec-c9e3-426e-9323-89d46267bd9a",
+      "name": "Return: Slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_book_slot($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ application_id: $json.application_id, slot_id: $json.slot_id, actor_id: $json.actor_id, actor_role: $json.actor_role }) ] }}"
+        }
+      },
+      "id": "c12e7891-95ba-4e3b-9517-880d02b674f6",
+      "name": "Book Slot (atomic)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        900,
+        60
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ba060f99-f122-41c1-a729-44d5a269cb66",
+              "leftValue": "={{ $json.result.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "74a03ebe-378d-476d-81cf-9434ebfb31d1",
+      "name": "Booked?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json.result;\nreturn [{ json: { ok: false, error: r.error, status: r.status || null, message: r.message || 'Booking failed — ask for the slot list again.' } }];"
+      },
+      "id": "4854825e-0d6c-440a-afdc-b32aff83e142",
+      "name": "Return: Booking Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list",
+          "cachedResultName": "Primary calendar"
+        },
+        "start": "={{ $json.result.interview.starts_at }}",
+        "end": "={{ $json.result.interview.ends_at }}",
+        "additionalFields": {
+          "summary": "=Interview — {{ $json.result.app_code }} — {{ $json.result.job_title }}",
+          "description": "=CompanyFlow interview for application {{ $json.result.app_code }} ({{ $json.result.job_title }}). Mode: {{ $json.result.interview.mode }}. Location: {{ $json.result.interview.location }}. Candidate details are in the HR dashboard.",
+          "location": "={{ $json.result.interview.location }}",
+          "attendees": [
+            "={{ $json.result.interview.interviewer_email }}"
+          ],
+          "conferenceDataUi": {
+            "conferenceDataValues": {
+              "conferenceSolution": "hangoutsMeet"
+            }
+          }
+        }
+      },
+      "id": "7cef3105-39c8-4007-922f-fd2a2d08fae2",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1340,
+        40
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "cfGCal00000001",
+          "name": "CF Google Calendar"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Disable this node if you have no Google Calendar credential — the booking is already saved."
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Book Slot (atomic)').first().json.result.candidate.email }}",
+        "subject": "=Your CompanyFlow interview — {{ $('Book Slot (atomic)').first().json.result.job_title }}",
+        "emailType": "html",
+        "message": "=<p>Hello {{ $('Book Slot (atomic)').first().json.result.candidate.first_name }},</p><p>Your interview for <b>{{ $('Book Slot (atomic)').first().json.result.job_title }}</b> ({{ $('Book Slot (atomic)').first().json.result.app_code }}) is booked for <b>{{ $('Book Slot (atomic)').first().json.result.interview.when }}</b>.</p><p>Mode: {{ $('Book Slot (atomic)').first().json.result.interview.mode }} — {{ $('Book Slot (atomic)').first().json.result.interview.location }}{{ $json.hangoutLink ? '<br>Google Meet: ' + $json.hangoutLink : '' }}</p><p>Good luck!<br>CompanyFlow Talent Team</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "cd28c943-9426-4552-9ccd-c5bc228787bf",
+      "name": "Email Candidate Confirmation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1560,
+        40
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cfGmail0000001",
+          "name": "CF Gmail"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select public.cf_attach_calendar($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify({ interview_id: $('Book Slot (atomic)').first().json.result.interview.interview_id, calendar_event_id: $('Create Calendar Event').first().json.id || null, meet_link: $('Create Calendar Event').first().json.hangoutLink || '' }) ] }}"
+        }
+      },
+      "id": "68f4c7db-aaf5-487d-aa07-8a95bdbd941b",
+      "name": "Save Meet Link",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1780,
+        40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cfPostgres00001",
+          "name": "CF Postgres (Supabase)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $('Book Slot (atomic)').first().json.result;\nlet meet = null, sent = false;\ntry { meet = $('Create Calendar Event').first().json.hangoutLink || null; } catch (e) {}\ntry { sent = !!$('Email Candidate Confirmation').first().json.id; } catch (e) {}\n// no candidate e-mail in the result that goes back to the AI agent\nreturn [{ json: { ok: true, app_code: r.app_code, job_title: r.job_title, interview: { when: r.interview.when, mode: r.interview.mode, location: r.interview.location, interviewer: r.interview.interviewer_name, meet_link: meet }, email_sent: sent } }];"
+      },
+      "id": "12ac6435-85cd-4b3f-8122-030eb1668801",
+      "name": "Return: Booking Confirmed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        40
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "List or Book?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return: Invalid Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List or Book?": {
+      "main": [
+        [
+          {
+            "node": "List Open Slots",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Book Slot (atomic)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Open Slots": {
+      "main": [
+        [
+          {
+            "node": "Return: Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Book Slot (atomic)": {
+      "main": [
+        [
+          {
+            "node": "Booked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booked?": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return: Booking Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Email Candidate Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Candidate Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Save Meet Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Meet Link": {
+      "main": [
+        [
+          {
+            "node": "Return: Booking Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "Africa/Cairo"
+  },
+  "pinData": {},
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
