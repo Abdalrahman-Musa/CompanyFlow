@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CompanyFlow Portal</title>
+<meta name="description" content="CompanyFlow — HR & Recruitment Screening Assistant: candidate, employee and HR staff portal.">
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f2f1ed; --ink:#0b0b0b; --ink-2:#52514e; --muted:#6f6d68;
+  --line:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --accent:#1f4fa8; --accent-ink:#ffffff; --accent-soft:#e6eefb;
+  --s1:#2a78d6; --s2:#eb6834;
+  --b1:#86b6ef; --b2:#3987e5; --b3:#256abf; --b4:#104281;
+  --good:#0ca30c; --good-ink:#006300; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.06);
+  --radius:12px;
+  font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#9a988f;
+    --line:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+    --accent:#6f9cf0; --accent-ink:#0b1630; --accent-soft:#1d2a44;
+    --s1:#3987e5; --s2:#d95926;
+    --b1:#9ec5f4; --b2:#5598e7; --b3:#2a78d6; --b4:#184f95;
+    --good-ink:#0ca30c; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#9a988f;
+  --line:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+  --accent:#6f9cf0; --accent-ink:#0b1630; --accent-soft:#1d2a44;
+  --s1:#3987e5; --s2:#d95926;
+  --b1:#9ec5f4; --b2:#5598e7; --b3:#2a78d6; --b4:#184f95;
+  --good-ink:#0ca30c; --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-size:15px;line-height:1.5}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--page) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:12px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;font-size:17px}
+.brand svg{flex:none}
+.brand small{font-weight:500;color:var(--muted);font-size:12px;letter-spacing:0}
+.spacer{flex:1}
+.who{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:14px;min-width:0}
+.who span.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface);white-space:nowrap}
+.pill.role-hr{border-color:transparent;background:var(--accent);color:var(--accent-ink)}
+.pill.role-employee{background:var(--accent-soft);color:var(--ink)}
+.pill.demo{background:#fff3d6;color:#6b4a00;border-color:#f3d48a}
+:root[data-theme="dark"] .pill.demo{background:#3a2e10;color:#f6d58a;border-color:#5b4716}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;height:36px;min-width:36px;padding:0 10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.iconbtn:hover{border-color:var(--axis)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;padding:12px 0 0;scrollbar-width:none}
+nav.tabs button{border:0;background:transparent;padding:9px 14px;border-radius:10px;cursor:pointer;color:var(--ink-2);font-weight:600;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+main{padding:18px 0 60px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:18px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:17px;margin:0 0 10px;letter-spacing:-.01em}
+h3{font-size:14px;margin:0 0 8px;color:var(--ink-2);font-weight:650;text-transform:none}
+.sub{color:var(--ink-2);margin:0 0 16px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{padding:14px 16px}
+.kpi .lab{font-size:12.5px;color:var(--ink-2);display:flex;gap:6px;align-items:center}
+.kpi .val{font-size:28px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.kpi .val small{font-size:14px;font-weight:600;color:var(--ink-2);margin-left:3px}
+.kpi .note{font-size:12px;color:var(--muted)}
+@media (max-width:860px){.g2,.g3{grid-template-columns:1fr}}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin:10px 0 4px}
+input[type=text],input[type=email],input[type=password],input[type=url],select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--page);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea{min-height:140px;resize:vertical}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:650;cursor:pointer;background:var(--accent);color:var(--accent-ink);display:inline-flex;gap:8px;align-items:center;justify-content:center}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.small{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn.danger{background:var(--critical);color:#fff}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.err{background:color-mix(in srgb,var(--critical) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--critical) 45%,transparent);color:var(--ink);padding:10px 12px;border-radius:10px;font-size:14px}
+.ok{background:color-mix(in srgb,var(--good) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--good) 45%,transparent);padding:10px 12px;border-radius:10px;font-size:14px}
+.login{max-width:440px;margin:6vh auto 0}
+.seg{display:flex;background:var(--surface-2);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;padding:8px;border-radius:8px;cursor:pointer;font-weight:600;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+details.adv summary{cursor:pointer;color:var(--ink-2);font-size:13px;margin-top:14px}
+.demo-accounts{font-size:12.5px;color:var(--ink-2);margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.demo-accounts code{font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--ink-2);font-weight:650;background:var(--surface)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:650;padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap;color:var(--ink)}
+.badge .dot{width:8px;height:8px;border-radius:50%}
+.jobcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.job h2{margin-bottom:2px}
+.job .meta{font-size:12.5px;color:var(--ink-2);margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--surface-2)}
+/* chat */
+.chat{display:flex;flex-direction:column;height:min(70vh,640px)}
+.chat .msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:78%;padding:10px 13px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;font-size:14.5px}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--surface-2);border-bottom-left-radius:4px}
+.msg.sys{align-self:center;background:transparent;color:var(--muted);font-size:12.5px}
+.chat form{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.chat form input{flex:1}
+.suggest{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}
+.suggest button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12.5px;cursor:pointer;color:var(--ink-2)}
+.plan{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface);color:var(--ink);white-space:normal}
+.plan ol{margin:6px 0 10px;padding-left:20px}
+.plan li{margin:4px 0}
+.tag-c{font-size:11px;font-weight:700;color:#7a3a14;background:#fde3d6;border-radius:6px;padding:1px 6px;margin-left:6px}
+:root[data-theme="dark"] .tag-c{color:#ffc6a6;background:#4a2414}
+/* timeline */
+.timeline{list-style:none;margin:6px 0 0;padding:0}
+.timeline li{display:flex;gap:10px;padding:4px 0;font-size:13.5px}
+.timeline li::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:6px;flex:none}
+/* kanban */
+.kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(210px,1fr);gap:10px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--surface-2);border-radius:12px;padding:8px;min-height:120px}
+.col h3{display:flex;justify-content:space-between;margin:2px 4px 8px;font-size:13px}
+.kcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:7px;cursor:pointer;font-size:13px}
+.kcard:hover{border-color:var(--axis)}
+.kcard .t{display:flex;justify-content:space-between;gap:6px;font-weight:650}
+.kcard .s{color:var(--ink-2);font-size:12px}
+/* drawer */
+.drawer{position:fixed;inset:0;z-index:50;display:none}
+.drawer.open{display:block}
+.drawer .shade{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.drawer .panel{position:absolute;right:0;top:0;bottom:0;width:min(720px,100%);background:var(--page);overflow-y:auto;padding:18px 16px 40px;border-left:1px solid var(--line)}
+.crit{display:grid;grid-template-columns:minmax(120px,1.4fr) 2fr 64px;gap:8px;align-items:center;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line)}
+.meter{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--s1);border-radius:0 4px 4px 0}
+.ev{font-size:12.5px;color:var(--ink-2);grid-column:1/-1;margin-top:-2px}
+pre.resume{white-space:pre-wrap;font-size:12.5px;background:var(--surface-2);padding:12px;border-radius:10px;max-height:320px;overflow:auto}
+/* charts */
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:8px;padding:6px 9px;font-size:12.5px;white-space:nowrap;opacity:0;transition:opacity .08s;z-index:3}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin:2px 0 8px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.tview{margin-top:8px}
+.tview summary{font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.status-flag{display:inline-flex;gap:4px;align-items:center;font-size:12px;color:var(--ink-2)}
+.hidden{display:none!important}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--page);padding:10px 16px;border-radius:10px;font-size:14px;z-index:80;opacity:0;transition:opacity .2s;max-width:90vw}
+.toast.show{opacity:1}
+footer{color:var(--muted);font-size:12px;padding:18px 0 30px;border-top:1px solid var(--line)}
+@media (max-width:600px){header.top .who span.name,.brand small,.pill.demo{display:none}.brand{font-size:15px}.iconbtn{white-space:nowrap}.msg{max-width:92%}.crit{grid-template-columns:1fr 1fr 54px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M9 20.5c2.2 2.6 5.8 3.4 8.9 2.1M23 11.5c-2.2-2.6-5.8-3.4-8.9-2.1M9.5 11.5h6M16.5 20.5h6" stroke="var(--accent-ink)" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
+      <div>CompanyFlow<br><small>HR &amp; Recruitment Assistant</small></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="who" id="who"></div>
+    <button class="iconbtn" id="themeBtn" title="Toggle light/dark theme" aria-label="Toggle theme">☾</button>
+    <button class="iconbtn hidden" id="logoutBtn">Log out</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs hidden" id="tabs" role="tablist"></nav>
+  <main id="main"></main>
+  <footer>CompanyFlow · capstone project (DEPI Generative &amp; Agentic AI Systems) · UI visibility is a convenience — every permission is enforced server-side in n8n + Postgres.</footer>
+</div>
+
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="shade" data-close></div>
+  <aside class="panel" role="dialog" aria-modal="true" aria-label="Application details"><div id="drawerBody"></div></aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   CompanyFlow portal — one file, no build step.
+   Talks to the n8n webhooks: /cf/auth, /cf/portal, /cf/hr, /cf/hr/copilot
+   The session token lives in memory only (not localStorage) — refresh = log in again.
+   ===================================================================== */
+const S = { base: '', token: null, user: null, demo: false, tab: null, chatIds: {}, includeDemo: true };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('cf.' + k); return v === null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('cf.' + k, v); } catch (e) {} },
+};
+S.base = new URLSearchParams(location.search).get('api') || store.get('base', '');
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => n === null || n === undefined || n === '' || Number.isNaN(Number(n)) ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: 1 });
+const dt = s => s ? new Date(s).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Cairo' }) : '—';
+const day = s => s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'Africa/Cairo' }) : '—';
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3200); }
+
+/* ---------- theme ---------- */
+(function () {
+  const saved = store.get('theme', '');
+  if (saved) document.documentElement.dataset.theme = saved;
+  $('#themeBtn').onclick = () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next; store.set('theme', next);
+    if (S.tab) render();
+  };
+})();
+
+/* ---------- API ---------- */
+async function api(path, body) {
+  if (S.demo) return Demo.handle(path, body || {});
+  if (!S.base) throw new Error('Set the n8n webhook base URL first (Settings below the login form).');
+  const res = await fetch(S.base.replace(/\/+$/, '') + path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
+    body: JSON.stringify(body || {}),
+  });
+  let data = null; try { data = await res.json(); } catch (e) { data = null; }
+  if (res.status === 401 && S.token) { logout('Your session expired. Please log in again.'); throw new Error('Session expired'); }
+  if (!res.ok) { const m = data && (data.message || (data.details && data.details.join('; ')) || (data.reasons && data.reasons.join('; ')) || data.error); const e = new Error(m || ('HTTP ' + res.status)); e.status = res.status; e.data = data; throw e; }
+  return data;
+}
+
+/* ---------- auth ---------- */
+function setSession(token, user, demo) {
+  S.token = token; S.user = user; S.demo = !!demo; S.chatIds = {};
+  $('#logoutBtn').classList.remove('hidden');
+  $('#who').innerHTML = `<span class="name">${esc(user.name)}</span><span class="pill role-${esc(user.role)}">${esc(user.role === 'hr' ? 'HR staff' : user.role)}</span>${demo ? '<span class="pill demo">Demo data</span>' : ''}`;
+  S.tab = tabsFor(user.role)[0].id; renderTabs(); render();
+}
+function logout(msg) {
+  S.token = null; S.user = null; S.demo = false; S.tab = null;
+  $('#logoutBtn').classList.add('hidden'); $('#who').innerHTML = ''; $('#tabs').classList.add('hidden');
+  renderLogin(msg);
+}
+$('#logoutBtn').onclick = () => logout();
+
+function renderLogin(msg) {
+  const m = $('#main');
+  m.innerHTML = `
+  <div class="login">
+    <div class="card pad">
+      <h1>Welcome</h1>
+      <p class="sub">Candidates can create an account. Employees and HR staff use the account HR created for them.</p>
+      <div class="seg" role="group" aria-label="Login or register"><button id="segL" aria-pressed="true">Log in</button><button id="segR" aria-pressed="false">Create candidate account</button></div>
+      <form id="authForm" autocomplete="on">
+        <div id="regOnly" class="hidden"><label class="f" for="fn">Full name</label><input id="fn" type="text" autocomplete="name"></div>
+        <label class="f" for="em">Email</label><input id="em" type="email" required autocomplete="username">
+        <label class="f" for="pw">Password</label><input id="pw" type="password" required autocomplete="current-password" minlength="1">
+        <p class="small muted hidden" id="pwHint">At least 10 characters, with letters and numbers.</p>
+        <div id="authMsg" style="margin-top:10px">${msg ? `<div class="err">${esc(msg)}</div>` : ''}</div>
+        <div class="row" style="margin-top:14px"><button class="btn" id="authBtn" type="submit">Log in</button><button class="btn ghost" type="button" id="demoBtn">Explore with demo data</button></div>
+      </form>
+      <details class="adv" ${S.base ? '' : 'open'}><summary>Settings — n8n webhook base URL</summary>
+        <label class="f" for="base">Production webhook base URL</label>
+        <input id="base" type="url" placeholder="https://your-team.app.n8n.cloud/webhook" value="${esc(S.base)}">
+        <p class="small muted">Find it in any CompanyFlow webhook node → Production URL, without the path (ends in <code>/webhook</code>).</p>
+      </details>
+      <div class="demo-accounts">Seeded demo accounts (change the passwords before real use): <br>
+        HR <code>hr@companyflow.test</code> · Employee <code>employee@companyflow.test</code> · Candidate <code>candidate@companyflow.test</code></div>
+    </div>
+  </div>`;
+  let mode = 'login';
+  const setMode = md => { mode = md; $('#segL').setAttribute('aria-pressed', md === 'login'); $('#segR').setAttribute('aria-pressed', md === 'register');
+    $('#regOnly').classList.toggle('hidden', md === 'login'); $('#pwHint').classList.toggle('hidden', md === 'login'); $('#authBtn').textContent = md === 'login' ? 'Log in' : 'Create account'; };
+  $('#segL').onclick = e => { e.preventDefault(); setMode('login'); };
+  $('#segR').onclick = e => { e.preventDefault(); setMode('register'); };
+  $('#base').onchange = e => { S.base = e.target.value.trim(); store.set('base', S.base); };
+  $('#demoBtn').onclick = () => chooseDemo();
+  $('#authForm').onsubmit = async e => {
+    e.preventDefault(); S.base = $('#base').value.trim(); store.set('base', S.base);
+    const btn = $('#authBtn'); btn.disabled = true; $('#authMsg').innerHTML = '';
+    try {
+      const body = { action: mode, email: $('#em').value.trim(), password: $('#pw').value };
+      if (mode === 'register') body.full_name = $('#fn').value.trim();
+      const r = await api('/cf/auth', body);
+      setSession(r.token, r.user, false);
+    } catch (err) {
+      const map = { invalid_credentials: 'Wrong email or password.', account_locked: 'Too many failed attempts — the account is locked for 15 minutes.', email_taken: 'An account with this email already exists.' };
+      $('#authMsg').innerHTML = `<div class="err">${esc(map[err.data && err.data.error] || err.message)}</div>`;
+    } finally { btn.disabled = false; }
+  };
+}
+function chooseDemo() {
+  $('#authMsg').innerHTML = `<div class="ok">Demo mode runs entirely in your browser with sample data — nothing is sent to n8n. Pick a role:</div>
+  <div class="row" style="margin-top:8px"><button class="btn small" data-r="hr">HR staff</button><button class="btn small ghost" data-r="candidate">Candidate</button><button class="btn small ghost" data-r="employee">Employee</button></div>`;
+  $('#authMsg').querySelectorAll('button[data-r]').forEach(b => b.onclick = () => {
+    const r = b.dataset.r; setSession('demo', { name: { hr: 'Nadia Farouk', candidate: 'Youssef Adel', employee: 'Omar Khaled' }[r], role: r, email: r + '@companyflow.test' }, true);
+  });
+}
+
+/* ---------- navigation ---------- */
+function tabsFor(role) {
+  if (role === 'hr') return [{ id: 'dash', t: 'Dashboard' }, { id: 'pipe', t: 'Pipeline' }, { id: 'copilot', t: 'HR Copilot' }, { id: 'audit', t: 'Audit log' }, { id: 'evals', t: 'Evaluation' }];
+  if (role === 'employee') return [{ id: 'policy', t: 'HR Policy Assistant' }, { id: 'jobs', t: 'Internal jobs' }];
+  return [{ id: 'jobs', t: 'Open roles' }, { id: 'apply', t: 'Apply' }, { id: 'mine', t: 'My applications' }, { id: 'assistant', t: 'Careers assistant' }];
+}
+function renderTabs() {
+  const n = $('#tabs'); n.classList.remove('hidden');
+  n.innerHTML = tabsFor(S.user.role).map(t => `<button role="tab" data-t="${t.id}" aria-selected="${t.id === S.tab}">${esc(t.t)}</button>`).join('');
+  n.querySelectorAll('button').forEach(b => b.onclick = () => { S.tab = b.dataset.t; renderTabs(); render(); });
+}
+function render() {
+  const v = { jobs: viewJobs, apply: viewApply, mine: viewMine, assistant: () => viewChat('assistant'), policy: () => viewChat('policy'),
+              dash: viewDash, pipe: viewPipe, copilot: viewCopilot, audit: viewAudit, evals: viewEvals }[S.tab];
+  v && v();
+}
+const loading = (el, txt) => { el.innerHTML = `<div class="card pad muted"><span class="spin"></span> ${esc(txt || 'Loading…')}</div>`; };
+const fail = (el, err) => { el.innerHTML = `<div class="err">${esc(err.message || err)}</div>`; };
+
+/* ---------- candidate / employee views ---------- */
+let JOBS = [];
+async function getJobs() { const r = await api('/cf/portal', { action: 'jobs' }); JOBS = r.jobs || []; return JOBS; }
+async function viewJobs() {
+  const m = $('#main'); loading(m, 'Loading open roles…');
+  try {
+    const jobs = await getJobs();
+    const isCand = S.user.role === 'candidate';
+    m.innerHTML = `<h1>${isCand ? 'Open roles' : 'Internal openings'}</h1><p class="sub">${jobs.length} open roles. ${isCand ? 'Look-alike roles (e.g. SOC Tier 1 vs Tier 2) are listed separately — the careers assistant can explain the difference.' : 'Internal candidates are interviewed before external candidates with similar qualifications (Handbook §13).'}</p>
+    <div class="jobcards">${jobs.map(j => `<article class="card pad job"><h2>${esc(j.title)}</h2>
+      <div class="meta">${esc(j.id)} · ${esc(j.department)} · ${esc(j.seniority)} · ${esc(j.location)} · ${fmt(j.openings)} opening${j.openings > 1 ? 's' : ''}</div>
+      <p style="margin:0 0 10px">${esc(j.summary)}</p>
+      <h3>Must have</h3><div class="chips">${(j.must_have || []).map(s => `<span class="chip">${esc(s)}</span>`).join('')}</div>
+      <p class="small muted" style="margin:10px 0 0">Minimum relevant experience: ${fmt(j.min_years)} year${j.min_years == 1 ? '' : 's'}</p>
+      ${isCand ? `<div style="margin-top:12px"><button class="btn small" data-apply="${esc(j.id)}">Apply</button></div>` : ''}</article>`).join('')}</div>`;
+    m.querySelectorAll('[data-apply]').forEach(b => b.onclick = () => { S.tab = 'apply'; S.applyJob = b.dataset.apply; renderTabs(); render(); });
+  } catch (e) { fail(m, e); }
+}
+async function viewApply() {
+  const m = $('#main'); loading(m);
+  try {
+    const jobs = JOBS.length ? JOBS : await getJobs();
+    m.innerHTML = `<div class="grid g2"><div class="card pad"><h1>Apply</h1><p class="sub">Upload a text-based PDF or TXT (max 5&nbsp;MB) — or paste your résumé.</p>
+      <form id="ap">
+        <label class="f" for="job">Role</label><select id="job">${jobs.map(j => `<option value="${esc(j.id)}" ${S.applyJob === j.id ? 'selected' : ''}>${esc(j.title)} (${esc(j.id)})</option>`).join('')}</select>
+        <label class="f" for="file">Résumé file (PDF or TXT)</label><input id="file" type="file" accept=".pdf,.txt,application/pdf,text/plain">
+        <label class="f" for="txt">…or paste the text</label><textarea id="txt" placeholder="Paste your résumé here"></textarea>
+        <label class="row small" style="margin-top:12px;align-items:flex-start;gap:8px"><input type="checkbox" id="consent" style="margin-top:3px"><span>I agree that CompanyFlow processes my personal data to assess my application, in line with Egypt's Personal Data Protection Law (No. 151 of 2020). Data is kept for 12 months after the decision, then anonymised.</span></label>
+        <div id="apMsg" style="margin-top:10px"></div>
+        <button class="btn" style="margin-top:12px" id="apBtn">Submit application</button>
+      </form></div>
+      <div class="card pad"><h2>How your application is assessed</h2>
+        <ol class="small" style="padding-left:18px;color:var(--ink-2)">
+          <li>Your name, contact details and personal attributes (age, gender, marital or military status, religion, nationality) are removed before any automated step.</li>
+          <li>Skills, experience, education and languages are compared with the role's published requirements using a fixed, documented rubric.</li>
+          <li>An HR team member reviews every application and makes every decision — nothing is rejected automatically.</li>
+          <li>Ask the careers assistant about your status at any time.</li></ol></div></div>`;
+    $('#ap').onsubmit = async e => {
+      e.preventDefault(); const msg = $('#apMsg'); msg.innerHTML = ''; const btn = $('#apBtn');
+      const f = $('#file').files[0]; const txt = $('#txt').value;
+      const body = { action: 'apply', job_id: $('#job').value, consent: $('#consent').checked };
+      if (f) {
+        if (f.size > 5 * 1024 * 1024) { msg.innerHTML = '<div class="err">The file is larger than 5 MB.</div>'; return; }
+        if (!/\.(pdf|txt)$/i.test(f.name)) { msg.innerHTML = '<div class="err">Upload a PDF or .txt file. Word files: export as PDF first.</div>'; return; }
+        body.file_base64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(f); });
+        body.file_name = f.name; body.mime_type = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : 'text/plain');
+      } else body.resume_text = txt;
+      btn.disabled = true;
+      try { const r = await api('/cf/portal', body); msg.innerHTML = `<div class="ok"><b>${esc(r.app_code)}</b> — ${esc(r.message)}</div>`; $('#ap').reset(); }
+      catch (err) { msg.innerHTML = `<div class="err">${esc(err.message)}</div>`; }
+      finally { btn.disabled = false; }
+    };
+  } catch (e) { fail(m, e); }
+}
+async function viewMine() {
+  const m = $('#main'); loading(m, 'Loading your applications…');
+  try {
+    const r = await api('/cf/portal', { action: 'my_applications' });
+    const apps = r.applications || [];
+    m.innerHTML = `<h1>My applications</h1><p class="sub">${apps.length ? 'Live status from CompanyFlow HR.' : 'You have not applied yet.'}</p>
+    <div class="grid g2">${apps.map(a => `<article class="card pad"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(a.job_title)}</h2><span class="badge">${esc(a.status_label)}</span></div>
+      <p class="small muted" style="margin:2px 0 10px">${esc(a.app_code)} · applied ${day(a.applied_at)} · updated ${dt(a.last_update)}</p>
+      <p style="margin:0 0 8px"><b>Next step:</b> ${esc(a.next_step)}</p>
+      ${a.interview ? `<p class="small" style="margin:0 0 8px">Interview: <b>${esc(a.interview.when)}</b> · ${esc(a.interview.mode)} · ${esc(a.interview.location || '')} ${a.interview.meet_link ? `· <a href="${esc(a.interview.meet_link)}" target="_blank" rel="noopener">Join link</a>` : ''}</p>` : ''}
+      <ul class="timeline">${(a.history || []).map(h => `<li><span>${dt(h.at)}</span><span class="muted">${esc(h.status.replace(/_/g, ' '))}</span></li>`).join('')}</ul>
+      ${['rejected', 'withdrawn', 'hired'].includes(a.status) ? '' : `<button class="btn small ghost" style="margin-top:10px" data-w="${a.application_id}">Withdraw</button>`}</article>`).join('')}</div>`;
+    m.querySelectorAll('[data-w]').forEach(b => b.onclick = async () => {
+      if (!confirm('Withdraw this application?')) return;
+      try { await api('/cf/portal', { action: 'withdraw', application_id: Number(b.dataset.w), reason: 'Withdrawn by candidate in portal' }); toast('Application withdrawn'); viewMine(); }
+      catch (e) { toast(e.message); }
+    });
+  } catch (e) { fail(m, e); }
+}
+
+/* ---------- chat (candidates, employees, HR copilot) ---------- */
+function md(s) { // tiny, escape-first markdown: **bold**, bullet lines
+  return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/^\s*[-*•]\s+/gm, '• ');
+}
+function chatShell(m, title, sub, suggestions, extra) {
+  m.innerHTML = `<h1>${esc(title)}</h1><p class="sub">${sub}</p>${extra || ''}<div class="card chat"><div class="msgs" id="msgs" aria-live="polite"></div>
+  <div class="suggest">${suggestions.map(s => `<button type="button">${esc(s)}</button>`).join('')}<button type="button" id="newChat" title="Start a new conversation">＋ New chat</button></div>
+  <form id="cf"><input id="ci" type="text" autocomplete="off" placeholder="Type your message…" maxlength="2000" aria-label="Message"><button class="btn">Send</button></form></div>`;
+}
+function addMsg(who, html) { const box = $('#msgs'); const d = document.createElement('div'); d.className = 'msg ' + who; d.innerHTML = html; box.appendChild(d); box.scrollTop = box.scrollHeight; return d; }
+function viewChat(kind) {
+  const m = $('#main');
+  const cand = kind === 'assistant';
+  chatShell(m, cand ? 'Careers assistant' : 'HR Policy Assistant',
+    cand ? 'Ask about open roles, the difference between similar roles, your application status, or interview slots once you are shortlisted.'
+         : 'Answers come only from the CompanyFlow Employee Handbook, with section references. Anything not in the handbook goes to hr@companyflow.example.',
+    cand ? ['What is the difference between SOC-L1 and SOC-L2?', 'What is the status of my application?', 'Show me interview slots']
+         : ['How many annual leave days do I get?', 'When is salary paid?', 'How do I report a phishing email?']);
+  S.chatIds[kind] = S.chatIds[kind] || 'c' + Date.now().toString(36);
+  addMsg('sys', 'Conversation is remembered for this chat. Press “New chat” to start over.');
+  wireChat(async text => { const r = await api('/cf/portal', { action: 'chat', message: text, chat_id: S.chatIds[kind] }); return md(r.reply); }, kind);
+}
+function wireChat(send, kind) {
+  const form = $('#cf'), input = $('#ci');
+  const go = async text => {
+    if (!text.trim()) return; addMsg('me', esc(text)); input.value = '';
+    const t = addMsg('bot', '<span class="spin"></span>'); form.querySelector('button').disabled = true;
+    try { t.innerHTML = await send(text); } catch (e) { t.innerHTML = `<span style="color:var(--critical)">${esc(e.message)}</span>`; }
+    finally { form.querySelector('button').disabled = false; input.focus(); $('#msgs').scrollTop = 1e9; }
+  };
+  form.onsubmit = e => { e.preventDefault(); go(input.value); };
+  document.querySelectorAll('.suggest button:not(#newChat)').forEach(b => b.onclick = () => go(b.textContent));
+  $('#newChat').onclick = () => { S.chatIds[kind] = 'c' + Date.now().toString(36); $('#msgs').innerHTML = ''; addMsg('sys', 'New conversation started.'); };
+}
+
+/* ---------- HR copilot with plan → approve → execute ---------- */
+function viewCopilot() {
+  const m = $('#main');
+  chatShell(m, 'HR Copilot', 'Multi-step recruitment tasks. With “Plan first” the copilot proposes a plan you approve before anything changes.',
+    ['Shortlist the top 3 SOC-L1 candidates and offer them interview slots', 'Which candidates need attention and why?', 'Compare the top two DA-JR candidates'],
+    `<div class="row" style="margin-bottom:10px"><label class="row small"><input type="checkbox" id="planFirst" checked> Plan first (review before executing)</label></div>`);
+  S.chatIds.copilot = S.chatIds.copilot || 'hr';
+  addMsg('sys', 'Every request, approval and executed step is written to the audit log.');
+  wireChat(async text => {
+    const plan = $('#planFirst').checked;
+    if (!plan) { const r = await api('/cf/hr/copilot', { mode: 'chat', message: text }); return md(r.reply) + toolsLine(r.tools_used); }
+    const r = await api('/cf/hr/copilot', { mode: 'plan', message: text });
+    const p = r.plan || {};
+    const id = 'pl' + r.plan_id;
+    setTimeout(() => {
+      const b = document.getElementById(id); if (!b) return;
+      b.onclick = async () => {
+        b.disabled = true; b.innerHTML = '<span class="spin"></span> Executing…';
+        const t = addMsg('bot', '<span class="spin"></span> Running the approved plan…');
+        const note = b.nextElementSibling;
+        try { const x = await api('/cf/hr/copilot', { mode: 'execute', plan_id: r.plan_id }); t.innerHTML = md(x.reply) + toolsLine(x.tools_used); b.textContent = 'Executed ✓'; if (note) note.textContent = 'Approved and executed — see the audit log.'; }
+        catch (e) { t.innerHTML = `<span style="color:var(--critical)">${esc(e.message)}</span>`; b.textContent = 'Failed'; if (note) note.textContent = 'Execution failed — check the audit log for partial changes.'; }
+      };
+    }, 0);
+    return `<div class="plan"><b>Proposed plan #${esc(r.plan_id)}</b> — ${esc(p.goal || '')}
+      <ol>${(p.steps || []).map(s => `<li><code>${esc(s.tool)}</code> ${esc(s.purpose)} <span class="muted small">(${esc(s.inputs)})</span>${s.consequential ? '<span class="tag-c">changes data</span>' : ''}</li>`).join('')}</ol>
+      ${(p.assumptions || []).length ? `<div class="small muted">Assumptions: ${p.assumptions.map(esc).join('; ')}</div>` : ''}
+      ${(p.risks || []).length ? `<div class="small muted">Risks: ${p.risks.map(esc).join('; ')}</div>` : ''}
+      <div class="row" style="margin-top:10px"><button class="btn small" id="${id}">Approve &amp; execute</button><span class="small muted">Nothing has changed yet.</span></div></div>`;
+  }, 'copilot');
+}
+const toolsLine = t => t && t.length ? `<div class="small muted" style="margin-top:6px">Tools used: ${t.map(esc).join(', ')}</div>` : '';
+
+/* ---------- charts (hand-built SVG, hover tooltips, table fallback) ---------- */
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function niceMax(v) { if (v <= 5) return 5; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+function lineChart(el, rows, series, opts = {}) {
+  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 230, L = 34, R = 70, T = 12, B = 26;
+  const max = niceMax(Math.max(1, ...rows.flatMap(r => series.map(s => r[s.key] || 0))));
+  const x = i => L + (i * (W - L - R)) / Math.max(1, rows.length - 1);
+  const y = v => T + (H - T - B) * (1 - v / max);
+  const ticks = [0, max / 2, max];
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || 'line chart')}">`;
+  ticks.forEach(t => { svg += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="${css('--line')}" stroke-width="1"/><text x="${L - 6}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="${css('--muted')}">${fmt(t)}</text>`; });
+  const step = W < 480 ? 14 : 7; // x labels counted back from the latest day so the last label never collides
+  rows.forEach((r, i) => { const k = rows.length - 1 - i; if (k % step === 0 && (i === rows.length - 1 || i > 1)) svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === rows.length - 1 ? 'end' : 'middle'}" font-size="11" fill="${css('--muted')}">${esc(day(r.day))}</text>`; });
+  const last = rows[rows.length - 1] || {};
+  const ends = series.map(s => ({ s, y: y(last[s.key] || 0) + 4 })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13; // keep end labels apart
+  series.forEach(s => {
+    const pts = rows.map((r, i) => `${x(i).toFixed(1)},${y(r[s.key] || 0).toFixed(1)}`).join(' ');
+    svg += `<polyline points="${pts}" fill="none" stroke="${css(s.color)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+  ends.forEach(e => { svg += `<text x="${W - R + 8}" y="${e.y}" font-size="11.5" fill="${css('--ink-2')}">${esc(e.s.name)}</text>`; });
+  svg += `<line id="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="${css('--axis')}" stroke-width="1" opacity="0"/>`;
+  series.forEach((s, k) => { svg += `<circle id="xd${k}" r="4.5" fill="${css(s.color)}" stroke="${css('--surface')}" stroke-width="2" opacity="0"/>`; });
+  svg += `<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" id="hit"/></svg>`;
+  el.innerHTML = `<div class="legend">${series.map(s => `<span><i style="background:${css(s.color)}"></i>${esc(s.name)}</span>`).join('')}</div><div class="chart">${svg}<div class="tip"></div></div>
+   <details class="tview"><summary>Show as table</summary><div class="tablewrap"><table><thead><tr><th>Day</th>${series.map(s => `<th class="num">${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr><td>${day(r.day)}</td>${series.map(s => `<td class="num">${fmt(r[s.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
+  const c = el.querySelector('.chart'), svgEl = c.querySelector('svg'), tip = c.querySelector('.tip');
+  const move = ev => {
+    const pt = svgEl.getBoundingClientRect(); const sx = (ev.clientX - pt.left) * (W / pt.width);
+    const i = Math.max(0, Math.min(rows.length - 1, Math.round(((sx - L) / (W - L - R)) * (rows.length - 1))));
+    const xx = x(i); const xh = svgEl.querySelector('#xh'); xh.setAttribute('x1', xx); xh.setAttribute('x2', xx); xh.setAttribute('opacity', 1);
+    series.forEach((s, k) => { const d = svgEl.querySelector('#xd' + k); d.setAttribute('cx', xx); d.setAttribute('cy', y(rows[i][s.key] || 0)); d.setAttribute('opacity', 1); });
+    tip.innerHTML = `<b>${day(rows[i].day)}</b><br>` + series.map(s => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${css(s.color)};margin-right:5px"></span>${esc(s.name)}: <b>${fmt(rows[i][s.key])}</b>`).join('<br>');
+    tip.style.opacity = 1; const px = (xx / W) * pt.width; tip.style.left = Math.min(pt.width - 150, px + 12) + 'px'; tip.style.top = '6px';
+  };
+  svgEl.querySelector('#hit').addEventListener('pointermove', move);
+  svgEl.querySelector('#hit').addEventListener('pointerleave', () => { tip.style.opacity = 0; svgEl.querySelector('#xh').setAttribute('opacity', 0); series.forEach((s, k) => svgEl.querySelector('#xd' + k).setAttribute('opacity', 0)); });
+}
+function barList(el, rows, opts = {}) { // horizontal bars: rows [{label, value, color?, note?}]
+  const max = Math.max(1, ...rows.map(r => r.value));
+  el.innerHTML = `<div class="chart">${rows.map((r, i) => `<div class="crit" style="grid-template-columns:minmax(90px,140px) 1fr 70px;border:0;padding:5px 0" data-i="${i}">
+      <span class="small">${esc(r.label)}</span>
+      <span class="meter" style="height:14px;border-radius:4px"><i style="width:${Math.max(r.value ? 2 : 0, (100 * r.value) / max)}%;background:${r.color || css('--s1')};border-radius:0 4px 4px 0"></i></span>
+      <span class="small" style="text-align:right;font-variant-numeric:tabular-nums">${fmt(r.value)}${r.note ? ` <span class="muted">${esc(r.note)}</span>` : ''}</span></div>`).join('')}<div class="tip"></div></div>`;
+  const tip = el.querySelector('.tip');
+  el.querySelectorAll('[data-i]').forEach(d => {
+    d.addEventListener('pointerenter', () => { const r = rows[d.dataset.i]; tip.innerHTML = `<b>${esc(r.label)}</b>: ${fmt(r.value)}${r.tip ? '<br>' + esc(r.tip) : ''}`; tip.style.opacity = 1; tip.style.left = '150px'; tip.style.top = (d.offsetTop - 30) + 'px'; });
+    d.addEventListener('pointerleave', () => { tip.style.opacity = 0; });
+  });
+}
+
+/* ---------- HR dashboard ---------- */
+async function viewDash() {
+  const m = $('#main'); loading(m, 'Loading recruitment metrics…');
+  try {
+    const d = await api('/cf/hr', { action: 'dashboard', include_demo: S.includeDemo });
+    const k = d.kpis || {}, e = d.efficiency || {};
+    m.innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>Recruitment dashboard</h1><p class="sub" style="margin:0">Live from Postgres · generated ${dt(d.generated_at)} (Cairo)</p></div>
+      <label class="row small"><input type="checkbox" id="incDemo" ${S.includeDemo ? 'checked' : ''}> Include seeded demo history</label></div>
+    <div class="kpis" style="margin-top:14px">
+      ${kpi('Time to hire (avg)', k.avg_time_to_hire_days, 'days', `median ${fmt(k.median_time_to_hire_days)} d · ${fmt(k.hires)} hires`)}
+      ${kpi('Screened last 7 days', k.screened_last_7d, '', `${fmt(k.screened_total)} screened in total`)}
+      ${kpi('Applications (30 days)', k.applications_last_30d, '', `${fmt(k.total_applications)} all time · ${fmt(k.open_roles)} open roles`)}
+      ${kpi('Automated screening time', k.avg_screening_seconds, 's / résumé', 'measured per screening run')}
+      ${kpi('Shortlist rate', k.shortlist_rate_pct, '%', `${fmt(k.avg_time_to_shortlist_days)} days to shortlist`)}
+      ${kpi('Needs attention', k.needs_attention, '', 'unreadable résumés / screening errors', k.needs_attention > 0)}
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <section class="card pad"><h2>Screening volume — last 30 days</h2><div id="ch1"></div></section>
+      <section class="card pad"><h2>Pipeline funnel</h2><div id="ch2"></div><p class="small muted" style="margin:6px 0 0">Share of all applications that reached each stage.</p></section>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <section class="card pad"><h2>Manual vs CompanyFlow screening time</h2>${effBlock(e)}</section>
+      <section class="card pad"><h2>Score bands (latest screening)</h2><div id="ch3"></div><p class="small muted" style="margin:6px 0 0">Bands are recommendations only — HR decides every outcome.</p></section>
+    </div>
+    <section class="card pad" style="margin-top:14px"><h2>By role</h2><div class="tablewrap"><table><thead><tr><th>Role</th><th class="num">Applicants</th><th class="num">Screened</th><th class="num">Shortlisted</th><th class="num">Interviews</th><th class="num">Hired</th><th class="num">Avg score</th><th class="num">Time to hire (d)</th></tr></thead>
+      <tbody>${(d.by_job || []).map(j => `<tr><td><b>${esc(j.title)}</b><div class="small muted">${esc(j.job_id)}</div></td><td class="num">${fmt(j.applicants)}</td><td class="num">${fmt(j.screened)}</td><td class="num">${fmt(j.shortlisted)}</td><td class="num">${fmt(j.interviews)}</td><td class="num">${fmt(j.hired)}</td><td class="num">${fmt(j.avg_score)}</td><td class="num">${fmt(j.avg_time_to_hire_days)}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="card pad" style="margin-top:14px"><h2>Recent screening decisions</h2><div class="tablewrap"><table><thead><tr><th>When</th><th>Application</th><th>Role</th><th class="num">Score</th><th>Band</th></tr></thead>
+      <tbody>${(d.recent_decisions || []).map(r => `<tr><td>${dt(r.at)}</td><td>${esc(r.app_code)}</td><td>${esc(r.job_id)}</td><td class="num">${fmt(r.score)}</td><td>${bandBadge(r.band)}</td></tr>`).join('')}</tbody></table></div></section>`;
+    $('#incDemo').onchange = ev => { S.includeDemo = ev.target.checked; viewDash(); };
+    lineChart($('#ch1'), d.screening_volume || [], [{ key: 'applied', name: 'Applied', color: '--s1' }, { key: 'screened', name: 'Screened', color: '--s2' }], { label: 'Applications and screenings per day' });
+    const f = d.funnel || []; const top = (f[0] && f[0].count) || 0;
+    barList($('#ch2'), f.map(s => ({ label: s.stage, value: s.count, note: top ? Math.round((100 * s.count) / top) + '%' : '', color: css('--s1') })));
+    const bands = d.score_bands || {}; const order = [['Strong match', '--b4'], ['Potential match', '--b3'], ['Weak match', '--b2'], ['Not a match', '--b1']];
+    barList($('#ch3'), order.map(([b, c]) => ({ label: b, value: bands[b] || 0, color: css(c) })));
+  } catch (err) { fail(m, err); }
+}
+function kpi(label, val, unit, note, warn) {
+  return `<div class="card kpi"><div class="lab">${warn ? '<span aria-hidden="true" style="color:var(--critical)">▲</span>' : ''}${esc(label)}</div><div class="val">${fmt(val)}<small>${esc(unit || '')}</small></div><div class="note">${esc(note || '')}</div></div>`;
+}
+function effBlock(e) {
+  if (!e || e.manual_avg_minutes_per_resume == null) return `<p class="muted">No manual baseline yet. Ask 2–3 reviewers to fill the <b>Manual Screening Timer</b> form (CF-08) for the test résumés.</p>`;
+  return `<div class="grid g2"><div><div class="muted small">Fully manual (baseline)</div><div style="font-size:30px;font-weight:700">${fmt(e.manual_avg_minutes_per_resume)}<small style="font-size:14px;color:var(--ink-2)"> min / résumé</small></div><div class="small muted">${fmt(e.manual_samples)} timed reviews</div></div>
+    <div><div class="muted small">CompanyFlow + HR review</div><div style="font-size:30px;font-weight:700">${fmt(e.assisted_minutes_per_resume)}<small style="font-size:14px;color:var(--ink-2)"> min / résumé</small></div><div class="small muted">${fmt(e.auto_avg_seconds_per_resume)} s automated + ${fmt(e.hr_review_avg_seconds)} s HR review</div></div></div>
+    <p style="margin:14px 0 0;font-size:15px"><b style="color:var(--good-ink)">${fmt(e.reduction_pct)}%</b> less screening time per résumé.</p>`;
+}
+function bandBadge(b) {
+  const c = { 'Strong match': '--b4', 'Potential match': '--b3', 'Weak match': '--b2', 'Not a match': '--b1' }[b];
+  return b ? `<span class="badge"><span class="dot" style="background:${c ? css(c) : css('--muted')}"></span>${esc(b)}</span>` : '<span class="muted">—</span>';
+}
+
+/* ---------- HR pipeline (kanban) + explainable detail ---------- */
+const STAGES = [['New', ['applied', 'screening']], ['Screened', ['screened']], ['Needs attention', ['needs_info', 'screening_error']], ['Shortlisted', ['shortlisted']],
+                ['Interview', ['interview_scheduled', 'interviewed']], ['Offer', ['offer']], ['Hired', ['hired']], ['Closed', ['rejected', 'withdrawn']]];
+async function viewPipe() {
+  const m = $('#main'); loading(m, 'Loading candidate pipeline…');
+  try {
+    const jobs = JOBS.length ? JOBS : (S.demo ? await getJobsHR() : await getJobsHR());
+    const job = S.pipeJob || '';
+    const r = await api('/cf/hr', { action: 'candidates', job_id: job || null, include_demo: S.includeDemo });
+    const list = r.candidates || [];
+    m.innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>Candidate pipeline</h1><p class="sub" style="margin:0">Blind screening: candidates show as codes until shortlisted. Click a card for the explainable score.</p></div>
+      <div class="row"><select id="pj" style="width:auto"><option value="">All roles</option>${jobs.map(j => `<option value="${esc(j.id)}" ${job === j.id ? 'selected' : ''}>${esc(j.id)} — ${esc(j.title)}</option>`).join('')}</select>
+      <label class="row small"><input type="checkbox" id="incDemo2" ${S.includeDemo ? 'checked' : ''}> Demo history</label></div></div>
+    <div class="kanban" style="margin-top:14px">${STAGES.map(([name, st]) => { const items = list.filter(c => st.includes(c.status));
+      return `<div class="col"><h3><span>${esc(name)}</span><span class="muted">${items.length}</span></h3>${items.slice(0, 40).map(c => `<div class="kcard" data-id="${c.application_id}" tabindex="0">
+        <div class="t"><span>${esc(c.display_name)}</span><span>${c.score == null ? '—' : fmt(c.score)}</span></div>
+        <div class="s">${esc(c.app_code)} · ${esc(c.job_id)} · ${esc(c.status.replace(/_/g, ' '))}</div>
+        <div class="s">${bandBadge(c.band)} ${(c.flags || []).length ? `<span class="status-flag" title="${esc((c.flags || []).join(', '))}">⚑ ${c.flags.length} flag${c.flags.length > 1 ? 's' : ''}</span>` : ''}</div></div>`).join('')}${items.length > 40 ? `<div class="small muted">+${items.length - 40} more</div>` : ''}</div>`; }).join('')}</div>`;
+    $('#pj').onchange = e => { S.pipeJob = e.target.value; viewPipe(); };
+    $('#incDemo2').onchange = e => { S.includeDemo = e.target.checked; viewPipe(); };
+    m.querySelectorAll('.kcard').forEach(c => { c.onclick = () => openDetail(Number(c.dataset.id)); c.onkeydown = e => { if (e.key === 'Enter') openDetail(Number(c.dataset.id)); }; });
+  } catch (e) { fail(m, e); }
+}
+async function getJobsHR() { // HR reads the job list from the dashboard data (HR tokens are not allowed on the portal API)
+  const d = await api('/cf/hr', { action: 'dashboard', include_demo: false });
+  JOBS = (d.by_job || []).map(j => ({ id: j.job_id, title: j.title })); return JOBS;
+}
+let reviewStart = 0;
+async function openDetail(id, reveal) {
+  const dr = $('#drawer'), body = $('#drawerBody'); dr.classList.add('open'); dr.setAttribute('aria-hidden', 'false');
+  body.innerHTML = '<p class="muted"><span class="spin"></span> Loading…</p>';
+  if (!reveal) reviewStart = Date.now();
+  try {
+    const d = await api('/cf/hr', { action: 'application', application_id: id, reveal_identity: !!reveal });
+    const a = d.application, s = d.screening, c = d.candidate;
+    const crit = s && s.breakdown && s.breakdown.criteria;
+    body.innerHTML = `<div class="row" style="justify-content:space-between"><h1 style="margin:0">${esc(a.app_code)}</h1><button class="iconbtn" data-close aria-label="Close">✕</button></div>
+      <p class="sub" style="margin:2px 0 12px">${esc(a.job_title)} · ${esc(a.status.replace(/_/g, ' '))} · applied ${dt(a.applied_at)}${a.is_demo ? ' · <span class="pill demo">demo record</span>' : ''}</p>
+      <div class="card pad" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><div><b>${c.revealed ? esc(c.full_name) : esc(c.candidate_code)}</b>
+        <div class="small muted">${c.revealed ? esc([c.email, c.phone].filter(Boolean).join(' · ')) : 'Identity hidden (blind screening)'}</div></div>
+        ${c.revealed ? '' : `<button class="btn small ghost" id="reveal">Reveal identity (audited)</button>`}</div></div>
+      ${s ? `<div class="card pad" style="margin-bottom:12px"><div class="row" style="justify-content:space-between;align-items:baseline"><h2 style="margin:0">Score ${fmt(s.score)}/100</h2>${bandBadge(s.band)}</div>
+        <p class="small" style="margin:6px 0 10px">${esc(s.recommendation || '')}</p>
+        ${crit ? crit.map(k => `<div class="crit"><span>${esc(k.criterion)}</span><span class="meter"><i style="width:${(100 * k.points) / k.max}%"></i></span><span class="small" style="text-align:right">${fmt(k.points)} / ${k.max}</span>
+          <span class="ev">${esc(k.detail)}${critItems(k)}</span></div>`).join('') : `<p class="muted small">${esc(s.explanation || '')}</p>`}
+        ${(s.flags || []).length ? `<p class="small" style="margin:10px 0 0"><b>Flags:</b> ${s.flags.map(esc).join(', ')}</p>` : ''}
+        ${(s.alternatives || []).length ? `<p class="small" style="margin:6px 0 0"><b>Also fits:</b> ${s.alternatives.map(x => `${esc(x.title)} (${fmt(x.score)})`).join(', ')}</p>` : ''}
+        <p class="small muted" style="margin:8px 0 0">Rubric ${esc(s.rubric_version || '')} · ${esc(s.model || '')} · ${fmt((s.duration_ms || 0) / 1000)} s${s.from_cache ? ' · cached profile' : ''}</p></div>` : `<div class="card pad" style="margin-bottom:12px"><p class="muted">No screening result yet${a.error_code ? ' — ' + esc(a.error_code) : ''}.</p></div>`}
+      <div class="card pad" style="margin-bottom:12px"><h2>Decision</h2>
+        <div class="row"><select id="ns" style="width:auto">${['shortlisted', 'rejected', 'needs_info', 'interviewed', 'offer', 'hired', 'screened'].map(x => `<option>${x}</option>`).join('')}</select>
+        <input id="rs" type="text" placeholder="Job-related reason (required to reject)" style="flex:1;min-width:200px"><button class="btn small" id="sv">Save</button></div>
+        <p class="small muted" style="margin:8px 0 0">Your review time is recorded with the decision for the efficiency metric.</p><div id="svMsg"></div></div>
+      <div class="card pad" style="margin-bottom:12px"><h2>History</h2><ul class="timeline">${(d.events || []).map(e => `<li><span>${dt(e.at)}</span><span>${esc((e.from || '∅') + ' → ' + e.to)} <span class="muted">by ${esc(e.by || '')}${e.reason ? ' — ' + esc(e.reason) : ''}</span></span></li>`).join('')}</ul></div>
+      <div class="card pad" style="margin-bottom:12px"><h2>Résumé ${c.revealed ? '' : '(redacted)'}</h2><pre class="resume">${esc(d.resume || '')}</pre></div>
+      <div class="card pad"><h2>Audit trail</h2><div class="tablewrap"><table><tbody>${(d.audit || []).map(l => `<tr><td class="small">${dt(l.at)}</td><td class="small">${esc(l.action)}</td><td class="small">${esc(l.actor_role || '')}</td><td class="small">${esc(l.outcome)}</td></tr>`).join('')}</tbody></table></div></div>`;
+    body.querySelectorAll('[data-close]').forEach(b => b.onclick = closeDrawer);
+    const rv = $('#reveal'); if (rv) rv.onclick = () => openDetail(id, true);
+    $('#sv').onclick = async () => {
+      const ns = $('#ns').value, reason = $('#rs').value.trim();
+      try { const r = await api('/cf/hr', { action: 'set_status', application_id: id, new_status: ns, reason, review_seconds: Math.round((Date.now() - reviewStart) / 1000) });
+        $('#svMsg').innerHTML = `<div class="ok" style="margin-top:8px">${esc(r.app_code)}: ${esc(r.from)} → ${esc(r.to)}</div>`; if (S.tab === 'pipe') viewPipe(); }
+      catch (e) { $('#svMsg').innerHTML = `<div class="err" style="margin-top:8px">${esc(e.data && e.data.message || e.message)}${e.data && e.data.allowed ? ' — allowed: ' + esc(e.data.allowed.join(', ')) : ''}</div>`; }
+    };
+  } catch (e) { body.innerHTML = `<button class="iconbtn" data-close>✕</button><div class="err" style="margin-top:10px">${esc(e.message)}</div>`; body.querySelector('[data-close]').onclick = closeDrawer; }
+}
+function critItems(k) {
+  const it = (k.items || []).filter(x => x && typeof x === 'object' && 'matched' in x);
+  if (!it.length) return '';
+  return ' — ' + it.map(x => x.matched ? `✓ ${esc(x.label)}` : `✗ <s>${esc(x.label)}</s>`).join(' · ');
+}
+function closeDrawer() { const dr = $('#drawer'); dr.classList.remove('open'); dr.setAttribute('aria-hidden', 'true'); }
+$('#drawer .shade').onclick = closeDrawer;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+/* ---------- audit & evaluation ---------- */
+async function viewAudit() {
+  const m = $('#main'); loading(m, 'Loading audit log…');
+  try {
+    const r = await api('/cf/hr', { action: 'audit', limit: 150, filter_outcome: S.auditOutcome || null });
+    m.innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>Audit log</h1><p class="sub" style="margin:0">Append-only and SHA-256 hash-chained: every row includes the hash of the previous row.</p></div>
+      <div class="row"><select id="ao" style="width:auto"><option value="">All outcomes</option>${['success', 'denied', 'error', 'info'].map(o => `<option ${S.auditOutcome === o ? 'selected' : ''}>${o}</option>`).join('')}</select><button class="btn small" id="vc">Verify chain integrity</button></div></div>
+      <div id="vcMsg" style="margin:10px 0"></div>
+      <div class="card"><div class="tablewrap"><table><thead><tr><th>#</th><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Outcome</th><th>Details</th><th>Hash</th></tr></thead>
+      <tbody>${(r.entries || []).map(l => `<tr><td class="num">${l.id}</td><td class="small">${dt(l.at)}</td><td class="small">${esc(l.actor_role || '—')}</td><td><b class="small">${esc(l.action)}</b></td><td class="small">${esc((l.entity_type || '') + ' ' + (l.entity_id || ''))}</td>
+        <td><span class="badge">${l.outcome === 'denied' ? '⛔' : l.outcome === 'error' ? '⚠' : l.outcome === 'success' ? '✓' : 'ℹ'} ${esc(l.outcome)}</span></td><td class="small muted" style="max-width:320px;word-break:break-word">${esc(JSON.stringify(l.details)).slice(0, 220)}</td><td class="small"><code>${esc(l.row_hash)}</code></td></tr>`).join('')}</tbody></table></div></div>`;
+    $('#ao').onchange = e => { S.auditOutcome = e.target.value; viewAudit(); };
+    $('#vc').onclick = async () => { try { const v = await api('/cf/hr', { action: 'verify_audit' }); $('#vcMsg').innerHTML = v.ok ? `<div class="ok">✓ Chain intact — ${fmt(v.checked)} rows verified (last hash ${esc(v.last_hash)}…)</div>` : `<div class="err">✗ Chain broken at row ${esc(v.broken_at_id)}</div>`; } catch (e) { toast(e.message); } };
+  } catch (e) { fail(m, e); }
+}
+async function viewEvals() {
+  const m = $('#main'); loading(m, 'Loading evaluation runs…');
+  try {
+    const r = await api('/cf/hr', { action: 'eval_runs' });
+    const runs = r.runs || [];
+    const latest = {}; runs.forEach(x => { if (!latest[x.suite]) latest[x.suite] = x; });
+    const target = { ranking: 'target ≥ 8/10', fairness: 'Δ ≤ 1 point', retrieval: 'top-1 role correct', policy_qa: 'correct answers', leak: 'must be 100%' };
+    m.innerHTML = `<h1>Evaluation</h1><p class="sub">Run <b>CF-08 Evaluation Suite</b> in n8n to refresh these numbers.</p>
+      <div class="kpis">${['ranking', 'fairness', 'retrieval', 'policy_qa', 'leak'].map(s => { const x = latest[s];
+        return `<div class="card kpi"><div class="lab">${esc(s.replace('_', ' '))}</div><div class="val">${x ? `${x.passed}<small>/ ${x.total}</small>` : '—'}</div><div class="note">${esc(target[s])}${x ? ' · ' + day(x.run_at) : ''}</div></div>`; }).join('')}</div>
+      <section class="card pad" style="margin-top:14px"><h2>All runs</h2><div class="tablewrap"><table><thead><tr><th>When</th><th>Suite</th><th>Label</th><th class="num">Passed</th><th class="num">Total</th><th class="num">Pass rate</th></tr></thead>
+      <tbody>${runs.map(x => `<tr><td>${dt(x.run_at)}</td><td>${esc(x.suite)}</td><td class="small">${esc(x.label || '')}</td><td class="num">${fmt(x.passed)}</td><td class="num">${fmt(x.total)}</td><td class="num">${fmt(x.pass_rate)}%</td></tr>`).join('')}</tbody></table></div></section>`;
+  } catch (e) { fail(m, e); }
+}
+
+/* =====================================================================
+   DEMO MODE — sample data generated in the browser (no network calls).
+   ===================================================================== */
+const Demo = (() => {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const jobs = [
+    { id: 'SOC-L1', title: 'SOC Analyst – Tier 1', department: 'Cybersecurity', seniority: 'junior', location: 'Cairo, Egypt (Hybrid)', openings: 2, min_years: 0, summary: 'Monitor security alerts 24/7, triage them, and escalate real incidents to Tier 2.', must_have: ['SIEM monitoring', 'Alert triage', 'Incident ticketing & escalation', 'Networking fundamentals', 'Windows event log analysis'] },
+    { id: 'SOC-L2', title: 'SOC Analyst – Tier 2 / Incident Responder', department: 'Cybersecurity', seniority: 'mid', location: 'Cairo, Egypt (Hybrid)', openings: 1, min_years: 3, summary: 'Investigate escalated incidents end to end, contain threats, hunt proactively and tune detections.', must_have: ['Incident response', 'Advanced SIEM querying & correlation rules', 'Threat hunting', 'EDR investigation', 'Log & timeline analysis'] },
+    { id: 'DA-JR', title: 'Junior Data Analyst', department: 'Data & Analytics', seniority: 'junior', location: 'Cairo, Egypt (Hybrid)', openings: 2, min_years: 0, summary: 'Turn business questions into SQL queries, clean data, and build clear dashboards and reports.', must_have: ['SQL', 'Excel', 'Data visualisation (Power BI / Tableau)', 'Basic statistics', 'Data cleaning'] },
+    { id: 'BI-DEV', title: 'BI Developer', department: 'Data & Analytics', seniority: 'mid', location: 'Cairo, Egypt (Hybrid)', openings: 1, min_years: 2, summary: 'Design star-schema data models, build ETL pipelines and enterprise Power BI semantic models.', must_have: ['Power BI development', 'DAX', 'Dimensional modelling (star schema)', 'Advanced SQL', 'ETL tools'] },
+    { id: 'CS-EN', title: 'Customer Service Representative – English Account', department: 'Customer Operations', seniority: 'junior', location: 'Cairo, Egypt (On-site)', openings: 5, min_years: 0, summary: 'Handle inbound customer calls, chats and emails for an international English-speaking account.', must_have: ['Excellent English (C1+)', 'Customer communication', 'CRM / ticketing tools', 'Problem solving', 'Fast typing'] },
+    { id: 'TS-L1', title: 'Technical Support Specialist – L1', department: 'IT Services', seniority: 'junior', location: 'Cairo, Egypt (Hybrid)', openings: 2, min_years: 1, summary: 'Troubleshoot hardware, software, account and network issues for client users and resolve tickets.', must_have: ['Windows / macOS troubleshooting', 'Active Directory / Microsoft 365', 'Networking basics', 'Ticketing systems', 'Remote support'] }];
+  const statuses = ['applied', 'screened', 'screened', 'needs_info', 'shortlisted', 'shortlisted', 'interview_scheduled', 'interviewed', 'offer', 'hired', 'rejected', 'rejected'];
+  const names = ['Mariam Hassan', 'Omar Ibrahim', 'Nour Saleh', 'Karim Fathy', 'Salma Gamal', 'Youssef Kamel', 'Aya Mansour', 'Ziad Naguib', 'Habiba Rashad', 'Tarek Soliman', 'Laila Zaki', 'Mostafa Abdelrahman'];
+  const cands = Array.from({ length: 34 }, (_, i) => { const st = statuses[i % statuses.length]; const sc = st === 'needs_info' ? null : Math.round((38 + rnd() * 58) * 10) / 10;
+    const band = sc == null ? null : sc >= 75 ? 'Strong match' : sc >= 60 ? 'Potential match' : sc >= 40 ? 'Weak match' : 'Not a match';
+    const rev = ['shortlisted', 'interview_scheduled', 'interviewed', 'offer', 'hired'].includes(st);
+    return { application_id: 100 + i, app_code: 'APP-' + String(100 + i).padStart(5, '0'), candidate_code: 'CAND-' + String(200 + i).padStart(4, '0'), display_name: rev ? names[i % names.length] : 'CAND-' + String(200 + i).padStart(4, '0'),
+      job_id: jobs[i % 6].id, status: st, score: sc, band, flags: st === 'needs_info' ? ['TOO_SHORT'] : i % 9 === 0 ? ['MISSING_SECTIONS:education'] : [], applied_at: new Date(Date.now() - (i + 2) * 86400000 * 1.7).toISOString() }; });
+  const vol = Array.from({ length: 30 }, (_, i) => { const a = Math.round(2 + rnd() * 6 + (i > 20 ? 3 : 0)); return { day: new Date(Date.now() - (29 - i) * 86400000).toISOString(), applied: a, screened: Math.max(0, a - Math.round(rnd() * 1.5)) }; });
+  const audit = Array.from({ length: 22 }, (_, i) => ({ id: 400 - i, at: new Date(Date.now() - i * 3600e3 * 2.3).toISOString(), actor_role: ['system', 'hr', 'candidate', 'employee', 'candidate'][i % 5],
+    action: ['screening_decision', 'status_change', 'login', 'chat_turn', 'access_denied', 'pii_access', 'application_submitted'][i % 7], entity_type: 'application', entity_id: String(100 + (i % 30)),
+    outcome: i % 7 === 4 ? 'denied' : 'success', details: { demo: true }, row_hash: Math.floor(rnd() * 1e15).toString(16).padStart(12, '0') }));
+  const crit = (sc) => { const f = sc / 78.3; return [
+    { criterion: 'Must-have skills', points: 32, max: 40, detail: '4/5 matched', items: [{ label: 'SIEM monitoring', matched: true }, { label: 'Alert triage', matched: true }, { label: 'Incident ticketing & escalation', matched: true }, { label: 'Networking fundamentals', matched: true }, { label: 'Windows event log analysis', matched: false }] },
+    { criterion: 'Relevant experience', points: 14, max: 20, detail: '0.5 relevant years (required 0)', items: [] },
+    { criterion: 'Nice-to-have skills', points: 9, max: 15, detail: '3/5 matched', items: [] },
+    { criterion: 'Education', points: 6, max: 6, detail: 'level meets bachelor; field relevant', items: [] },
+    { criterion: 'Certifications', points: 4, max: 4, detail: 'CompTIA Security+', items: [] },
+    { criterion: 'Languages', points: 10, max: 10, detail: 'english: fluent vs professional; arabic: native vs fluent', items: [] },
+    { criterion: 'Past-hire pattern alignment (capped)', points: 3.3, max: 5, detail: '4/6 pattern skills (HP-001)', items: [] }]
+    .map(k => ({ ...k, points: Math.round(Math.min(k.max, k.points * f) * 10) / 10 })); };
+  const reply = (t) => {
+    t = t.toLowerCase();
+    if (S.user.role === 'employee') {
+      if (/annual|leave|إجاز/.test(t)) return 'After your first full year you get **21 working days** of paid annual leave (15 days in the first year, usable after the 3-month probation). Up to 7 unused days can be carried over until 31 March. (Handbook §3.1, §3.2)';
+      if (/salary|paid|pay/.test(t)) return 'Salaries are paid by bank transfer on the **25th** of each month; if that is a Friday, Saturday or public holiday, on the last working day before it. (Handbook §5.1)';
+      if (/phish/.test(t)) return 'Use the **Report Phishing** button in Outlook or forward the email to security@companyflow.example. (Handbook §9.2)';
+      return "I don't have that information in the handbook. Please contact hr@companyflow.example.";
+    }
+    if (/differ|soc-l1|tier/.test(t)) return '**SOC-L1 (Tier 1)** monitors and triages SIEM alerts on shift and escalates confirmed incidents — 0–2 years, fresh graduates welcome.\n**SOC-L2 (Tier 2)** owns the incident after escalation: investigation, containment with EDR, threat hunting and detection tuning — 3+ years.';
+    if (/status|application/.test(t)) return 'Your application **APP-00101** for SOC Analyst – Tier 1 is **Shortlisted**. Next step: choose an interview slot — just ask me to show the slots.';
+    if (/slot|interview/.test(t)) return 'Available slots for APP-00101:\n• Sun 25 Oct 2026, 10:00 (Cairo) — online (slot 12)\n• Sun 25 Oct 2026, 12:00 (Cairo) — online (slot 13)\n• Mon 26 Oct 2026, 14:00 (Cairo) — on-site, Smart Village (slot 17)\nTell me which slot you prefer.';
+    return 'I can help with open roles, the difference between similar roles, your application status and interview slots. HR reviews every application; I can\'t share internal evaluations.';
+  };
+  let planN = 40;
+  return { handle(path, b) { return new Promise(res => setTimeout(() => res(route(path, b)), 250 + rnd() * 350)); } };
+  function route(path, b) {
+    if (path === '/cf/portal') {
+      if (b.action === 'jobs') return { ok: true, jobs };
+      if (b.action === 'my_applications') return { ok: true, applications: [{ application_id: 101, app_code: 'APP-00101', job_id: 'SOC-L1', job_title: 'SOC Analyst – Tier 1', status: 'shortlisted', status_label: 'Shortlisted', next_step: 'Please choose an interview slot — ask the assistant "show me interview slots".', applied_at: new Date(Date.now() - 5 * 864e5).toISOString(), last_update: new Date(Date.now() - 864e5).toISOString(), interview: null,
+        history: [{ at: new Date(Date.now() - 5 * 864e5).toISOString(), status: 'applied' }, { at: new Date(Date.now() - 5 * 864e5 + 20e3).toISOString(), status: 'screened' }, { at: new Date(Date.now() - 864e5).toISOString(), status: 'shortlisted' }] }] };
+      if (b.action === 'apply') { if (!b.consent) throw Object.assign(new Error('CONSENT_REQUIRED — you must agree to the processing of your data (Egypt PDPL 151/2020)'), { status: 400 }); return { ok: true, app_code: 'APP-00142', message: 'Application received (demo). Automated screening has started; HR reviews every application.' }; }
+      if (b.action === 'withdraw') return { ok: true };
+      if (b.action === 'chat') return { reply: reply(b.message) };
+    }
+    if (path === '/cf/hr') {
+      if (b.action === 'dashboard') return { generated_at: new Date().toISOString(), kpis: { open_roles: 6, total_applications: 186, applications_last_30d: 141, screened_total: 183, screened_last_7d: 52, avg_time_to_hire_days: 17.4, median_time_to_hire_days: 15.9, avg_time_to_shortlist_days: 2.1, avg_screening_seconds: 14.6, shortlist_rate_pct: 34.2, hires: 9, upcoming_interviews: 7, needs_attention: 3 },
+        screening_volume: vol, funnel: [{ stage: 'Applied', count: 186 }, { stage: 'Screened', count: 183 }, { stage: 'Shortlisted', count: 63 }, { stage: 'Interview', count: 41 }, { stage: 'Offer', count: 13 }, { stage: 'Hired', count: 9 }],
+        score_bands: { 'Strong match': 48, 'Potential match': 57, 'Weak match': 52, 'Not a match': 26 },
+        by_job: jobs.map((j, i) => ({ job_id: j.id, title: j.title, applicants: [38, 14, 33, 12, 61, 28][i], screened: [38, 14, 32, 12, 60, 27][i], shortlisted: [13, 4, 11, 4, 22, 9][i], interviews: [9, 3, 7, 3, 13, 6][i], hired: [2, 1, 2, 0, 3, 1][i], avg_score: [61.2, 48.9, 58.4, 52.1, 63.7, 59.0][i], avg_time_to_hire_days: [16.2, 24.1, 17.8, null, 12.9, 18.3][i] })),
+        recent_decisions: cands.filter(c => c.score != null).slice(0, 8).map((c, i) => ({ app_code: c.app_code, job_id: c.job_id, score: c.score, band: c.band, at: new Date(Date.now() - i * 2.6e6).toISOString() })),
+        efficiency: { manual_avg_minutes_per_resume: 9.4, manual_samples: 30, auto_avg_seconds_per_resume: 14.6, hr_review_avg_seconds: 92, assisted_minutes_per_resume: 1.78, reduction_pct: 81.1 } };
+      if (b.action === 'candidates') return { ok: true, candidates: cands.filter(c => !b.job_id || c.job_id === b.job_id) };
+      if (b.action === 'application') { const c = cands.find(x => x.application_id === b.application_id) || cands[0]; const rev = b.reveal_identity || c.display_name !== c.candidate_code;
+        return { ok: true, application: { application_id: c.application_id, app_code: c.app_code, job_id: c.job_id, job_title: jobs.find(j => j.id === c.job_id).title, status: c.status, applied_at: c.applied_at, score: c.score, band: c.band, is_demo: true },
+          candidate: rev ? { candidate_code: c.candidate_code, full_name: names[(c.application_id - 100) % names.length], email: 'demo@example.com', revealed: true } : { candidate_code: c.candidate_code, revealed: false },
+          screening: c.score == null ? null : { score: c.score, band: c.band, recommendation: c.score >= 75 ? 'Shortlist for HR review' : 'HR to review', breakdown: { criteria: crit(c.score) }, flags: c.flags, alternatives: [{ title: 'Technical Support Specialist – L1', score: 66.5 }], rubric_version: 'cf-rubric-1.0', model: 'demo', duration_ms: 13200 },
+          resume: rev ? 'SALMA A. — Junior SOC Analyst\n(demo résumé text)' : '[CANDIDATE] — Junior SOC Analyst\nCairo, Egypt | [EMAIL] | [PHONE]\n\nEXPERIENCE\nSOC Analyst Intern — Nile MSSP | Jan 2026 – Jun 2026\n- Monitored Splunk SIEM alert queues; triaged 40+ alerts per shift…',
+          events: [{ at: c.applied_at, from: null, to: 'applied', by: 'candidate' }, { at: c.applied_at, from: 'applied', to: 'screened', by: 'system', reason: 'Automated screening completed' }], audit: audit.slice(0, 5) }; }
+      if (b.action === 'set_status') { if (b.new_status === 'rejected' && (b.reason || '').length < 5) throw Object.assign(new Error('A rejection must include a job-related reason (min 5 characters).'), { status: 409, data: { message: 'A rejection must include a job-related reason (min 5 characters).' } }); return { ok: true, app_code: 'APP-' + String(b.application_id).padStart(5, '0'), from: 'screened', to: b.new_status }; }
+      if (b.action === 'audit') return { ok: true, entries: audit.filter(a => !b.filter_outcome || a.outcome === b.filter_outcome) };
+      if (b.action === 'verify_audit') return { ok: true, checked: 1284, last_hash: '9f2c41ab77e0d1c3' };
+      if (b.action === 'eval_runs') return { ok: true, runs: [{ suite: 'ranking', passed: 9, total: 10, pass_rate: 90, run_at: new Date().toISOString(), label: 'demo' }, { suite: 'fairness', passed: 2, total: 2, pass_rate: 100, run_at: new Date().toISOString(), label: 'demo' }, { suite: 'retrieval', passed: 8, total: 8, pass_rate: 100, run_at: new Date().toISOString(), label: 'demo' }, { suite: 'policy_qa', passed: 13, total: 14, pass_rate: 92.9, run_at: new Date().toISOString(), label: 'demo' }, { suite: 'leak', passed: 15, total: 15, pass_rate: 100, run_at: new Date().toISOString(), label: 'demo' }] };
+    }
+    if (path === '/cf/hr/copilot') {
+      if (b.mode === 'plan') return { plan_id: ++planN, requires_approval: true, plan: { goal: 'Shortlist the strongest SOC-L1 candidates and offer interview slots', assumptions: ['"Top 3" means the three highest screening scores among unscreened-by-HR applications'],
+        steps: [{ step: 1, tool: 'rank_candidates', purpose: 'Get the top 3 SOC-L1 candidates with gaps', inputs: 'job_id=SOC-L1, limit=3', consequential: false }, { step: 2, tool: 'application_details', purpose: 'Check evidence and flags for each', inputs: 'application_id from step 1', consequential: false },
+                { step: 3, tool: 'update_application_status', purpose: 'Shortlist the three candidates', inputs: 'new_status=shortlisted, reason=top must-have coverage', consequential: true }, { step: 4, tool: 'interview_scheduler', purpose: 'List open slots for each shortlisted application', inputs: 'action=list_slots', consequential: false }],
+        risks: ['Scores are recommendations; confirm there are no unresolved flags'] } };
+      if (b.mode === 'execute') return { reply: 'Done — 3 candidates shortlisted for SOC-L1.\n✓ step 1 — ranked: APP-00112 (91.4), APP-00106 (84.0), APP-00118 (77.2)\n✓ step 2 — no blocking flags\n✓ step 3 — all three moved to shortlisted\n✓ step 4 — 6 open slots available next week; candidates can pick one in the careers assistant', tools_used: ['rank_candidates', 'application_details', 'update_application_status', 'interview_scheduler'] };
+      return { reply: 'There are **6 open roles**. 3 applications need attention (unreadable résumés). The busiest role is CS-EN with 61 applicants.', tools_used: ['pipeline_overview'] };
+    }
+    throw new Error('Demo: unknown request');
+  }
+})();
+
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (S.tab === 'dash') viewDash(); }, 300); });
+renderLogin();
+</script>
+</body>
+</html>
