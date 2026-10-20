@@ -1,0 +1,8 @@
+# never commit secrets
+*.env
+.env*
+credentials*.json
+*secret*
+# local tooling
+node_modules/
+.DS_Store
