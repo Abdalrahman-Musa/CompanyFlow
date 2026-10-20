@@ -1,0 +1,152 @@
+[
+  {
+    "case": 1,
+    "job": "SOC-L1",
+    "codes": [
+      "R12",
+      "R01",
+      "R04"
+    ],
+    "expected": [
+      "R01",
+      "R04",
+      "R12"
+    ],
+    "rationale": "Tier-1 SIEM/triage evidence beats NOC networking; accountant has no security skills"
+  },
+  {
+    "case": 2,
+    "job": "SOC-L2",
+    "codes": [
+      "R01",
+      "R03",
+      "R02"
+    ],
+    "expected": [
+      "R02",
+      "R01",
+      "R03"
+    ],
+    "rationale": "Only R02 has real IR/hunting/EDR; R01 has SOC basics but no Tier-2 skills; R03 has none"
+  },
+  {
+    "case": 3,
+    "job": "SOC-L1",
+    "codes": [
+      "R11",
+      "R04",
+      "R09"
+    ],
+    "expected": [
+      "R04",
+      "R09",
+      "R11"
+    ],
+    "rationale": "NOC + QRadar exposure > tech support networking basics > backend developer"
+  },
+  {
+    "case": 4,
+    "job": "DA-JR",
+    "codes": [
+      "R10",
+      "R07",
+      "R05"
+    ],
+    "expected": [
+      "R05",
+      "R07",
+      "R10"
+    ],
+    "rationale": "R05 covers all analyst must-haves; R07 has SQL/stats only; R10 has Excel only"
+  },
+  {
+    "case": 5,
+    "job": "BI-DEV",
+    "codes": [
+      "R05",
+      "R07",
+      "R06"
+    ],
+    "expected": [
+      "R06",
+      "R05",
+      "R07"
+    ],
+    "rationale": "R06 is a full BI developer; R05 knows Power BI/DAX/SQL but no modelling/ETL; R07 only SQL"
+  },
+  {
+    "case": 6,
+    "job": "DA-JR",
+    "codes": [
+      "R08",
+      "R05",
+      "R12"
+    ],
+    "expected": [
+      "R05",
+      "R12",
+      "R08"
+    ],
+    "rationale": "R05 full fit; accountant has Excel/SQL/Power BI basics; CS rep has none"
+  },
+  {
+    "case": 7,
+    "job": "CS-EN",
+    "codes": [
+      "R11",
+      "R10",
+      "R08"
+    ],
+    "expected": [
+      "R08",
+      "R10",
+      "R11"
+    ],
+    "rationale": "R08 is a strong BPO agent; R10 has C1 English + customer-facing basics; R11 has neither"
+  },
+  {
+    "case": 8,
+    "job": "TS-L1",
+    "codes": [
+      "R08",
+      "R09",
+      "R03"
+    ],
+    "expected": [
+      "R09",
+      "R03",
+      "R08"
+    ],
+    "rationale": "R09 matches every TS must-have; R03 has some helpdesk skills; R08 none"
+  },
+  {
+    "case": 9,
+    "job": "CS-EN",
+    "codes": [
+      "R04",
+      "R08",
+      "R09"
+    ],
+    "expected": [
+      "R08",
+      "R09",
+      "R04"
+    ],
+    "rationale": "R08 ideal; R09 has support + C1 English; NOC engineer lacks customer skills"
+  },
+  {
+    "case": 10,
+    "job": "BI-DEV",
+    "codes": [
+      "R10",
+      "R12",
+      "R06"
+    ],
+    "expected": [
+      "R06",
+      "R12",
+      "R10"
+    ],
+    "rationale": "R06 full fit; accountant has Power BI/SQL basics; tourism graduate none"
+  }
+]

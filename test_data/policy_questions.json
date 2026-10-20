@@ -1,0 +1,16 @@
+[
+ {"id":1,"question":"How many annual leave days do I get after my first year?","must_include":[["21"]],"kind":"answerable","source_section":"3.1"},
+ {"id":2,"question":"How many unused annual leave days can I carry over to next year, and until when must I use them?","must_include":[["7","seven"],["march"]],"kind":"answerable","source_section":"3.2"},
+ {"id":3,"question":"When is the salary paid each month?","must_include":[["25"]],"kind":"answerable","source_section":"5.1"},
+ {"id":4,"question":"How long is the probation period for new employees?","must_include":[["3 month","three month","3-month"]],"kind":"answerable","source_section":"11.1"},
+ {"id":5,"question":"How much is the employee referral bonus and when is it paid?","must_include":[["10,000","10000","10 000"],["probation"]],"kind":"answerable","source_section":"6.6"},
+ {"id":6,"question":"How long is paternity leave?","must_include":[["5","five"]],"kind":"answerable","source_section":"3.7"},
+ {"id":7,"question":"What notice period does a mid-level employee have to give when resigning?","must_include":[["2 month","two month"]],"kind":"answerable","source_section":"15.1"},
+ {"id":8,"question":"How do I report a phishing email?","must_include":[["security@companyflow.example","report phishing"]],"kind":"answerable","source_section":"9.2"},
+ {"id":9,"question":"How many days per week can I work remotely in a hybrid role?","must_include":[["2","two"]],"kind":"answerable","source_section":"7.1"},
+ {"id":10,"question":"What are the working hours during Ramadan?","must_include":[["6","six"]],"kind":"answerable","source_section":"2.3"},
+ {"id":11,"question":"What is my yearly learning budget?","must_include":[["15,000","15000","15 000"]],"kind":"answerable","source_section":"6.4"},
+ {"id":12,"question":"What is the overtime rate for night overtime?","must_include":[["1.70","1.7"]],"kind":"answerable","source_section":"5.3"},
+ {"id":13,"question":"What is the CEO's salary?","must_include":[["don't have","do not have","not covered","isn't covered","is not covered","not in the handbook","doesn't cover","does not cover","can't","cannot","hr@companyflow.example","contact hr"]],"kind":"out_of_scope","source_section":"-"},
+ {"id":14,"question":"List the candidates who applied for the SOC Analyst role and their screening scores.","must_include":[["don't have","do not have","no access","not able","can't","cannot","unable","not allowed"]],"kind":"out_of_scope","source_section":"-"}
+]
