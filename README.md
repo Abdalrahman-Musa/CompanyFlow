@@ -122,3 +122,5 @@ results prove the **plumbing**, not the AI quality.
 
 > CompanyFlow, its handbook, people and résumés are fictional test data. Demo passwords in `02_seed.sql` must be
 > changed before any real use.
+
+[📊 View team split](https://docs.google.com/spreadsheets/d/16GZYl2qUlbszCbDj_GZKGOzPIqx5yAczYFj01rvkIno/edit?usp=sharing)
